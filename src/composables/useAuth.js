@@ -1,59 +1,70 @@
 import { computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import { useNotifications } from './useNotifications'
+import { useAuthStore } from '@/stores/auth'
 
 export function useAuth() {
   const authStore = useAuthStore()
   const router = useRouter()
-  const notifications = useNotifications()
 
-  const isAuthenticated = computed(() => authStore.isAuthenticated)
+  // Computed properties
   const user = computed(() => authStore.user)
-  const userRole = computed(() => authStore.userRole)
+  const isAuthenticated = computed(() => authStore.isAuthenticated)
+  const token = computed(() => authStore.token)
+  const isLoading = computed(() => authStore.loading)
 
-  async function login(credentials) {
+  // Login
+  const login = async (credentials) => {
     try {
       await authStore.login(credentials)
-      notifications.success('Xush kelibsiz!')
       router.push('/dashboard')
     } catch (error) {
-      const message = error.response?.data?.detail || 'Login xatosi'
-      notifications.error(message)
       throw error
     }
   }
 
-  async function logout() {
+  // Logout
+  const logout = async () => {
     try {
       await authStore.logout()
-      notifications.info('Tizimdan chiqdingiz')
       router.push('/login')
     } catch (error) {
-      notifications.error('Logout xatosi')
+      console.error('Logout error:', error)
     }
   }
 
-  function hasPermission(permission) {
-    return authStore.hasPermission(permission)
+  // Change password
+  const changePassword = async (data) => {
+    try {
+      await authStore.changePassword(data)
+    } catch (error) {
+      throw error
+    }
   }
 
-  function hasAnyPermission(permissions) {
-    return authStore.hasAnyPermission(permissions)
+  // Check if user has specific role
+  const hasRole = (role) => {
+    if (!user.value) return false
+    return user.value.role === role || user.value.roles?.includes(role)
   }
 
-  function hasRole(role) {
-    return authStore.hasRole(role)
+  // Check if user has any of the specified roles
+  const hasAnyRole = (roles) => {
+    if (!user.value) return false
+    return roles.some(role => hasRole(role))
   }
 
   return {
-    isAuthenticated,
+    // State
     user,
-    userRole,
+    isAuthenticated,
+    token,
+    isLoading,
+    
+    // Methods
     login,
     logout,
-    hasPermission,
-    hasAnyPermission,
+    changePassword,
     hasRole,
+    hasAnyRole
   }
 }

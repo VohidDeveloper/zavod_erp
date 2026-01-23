@@ -1,68 +1,79 @@
 <template>
-    <div class="app-layout" :class="{ 'dark': isDark }">
+    <div class="min-h-screen bg-gray-50">
       <!-- Sidebar -->
-      <Sidebar 
-        :is-collapsed="isSidebarCollapsed"
-        @toggle="toggleSidebar"
-      />
-  
+      <Sidebar :collapsed="sidebarCollapsed" @toggle="toggleSidebar" />
+      
       <!-- Main Content Area -->
-      <div class="main-wrapper" :class="mainWrapperClasses">
+      <div
+        :class="[
+          'transition-all duration-300',
+          sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+        ]"
+      >
         <!-- Navbar -->
         <Navbar @toggle-sidebar="toggleSidebar" />
-  
+        
         <!-- Page Content -->
-        <main class="main-content">
+        <main class="p-6">
           <!-- Breadcrumb -->
           <Breadcrumb class="mb-6" />
-  
-          <!-- Router View -->
-          <router-view v-slot="{ Component, route }">
-            <Transition :name="route.meta.transition || 'fade'" mode="out-in">
-              <component :is="Component" :key="route.path" />
-            </Transition>
+          
+          <!-- Page Content -->
+          <router-view v-slot="{ Component }">
+            <transition name="page" mode="out-in">
+              <component :is="Component" />
+            </transition>
           </router-view>
         </main>
-  
+        
         <!-- Footer -->
         <Footer />
       </div>
+      
+      <!-- Notification Container -->
+      <NotificationContainer />
+      
+      <!-- Toast Container -->
+      <ToastContainer />
     </div>
   </template>
   
   <script setup>
-  import { ref, computed } from 'vue'
-  import { useDark, useToggle } from '@vueuse/core'
-  import Navbar from './header/Navbar.vue'
-  import Sidebar from './sidebar/Sidebar.vue'
+  import { ref, onMounted } from 'vue'
+  import Sidebar from './Sidebar.vue'
+  import Navbar from './Navbar.vue'
   import Breadcrumb from './Breadcrumb.vue'
-  import Footer from './footer/Footer.vue'
+  import Footer from './Footer.vue'
+  import { NotificationContainer, ToastContainer } from '@/components/common'
   
-  const isDark = useDark()
-  const isSidebarCollapsed = ref(false)
-  
-  const mainWrapperClasses = computed(() => ({
-    'ml-64': !isSidebarCollapsed.value,
-    'ml-20': isSidebarCollapsed.value,
-  }))
+  const sidebarCollapsed = ref(false)
   
   const toggleSidebar = () => {
-    isSidebarCollapsed.value = !isSidebarCollapsed.value
+    sidebarCollapsed.value = !sidebarCollapsed.value
+    localStorage.setItem('sidebarCollapsed', sidebarCollapsed.value)
   }
+  
+  onMounted(() => {
+    const saved = localStorage.getItem('sidebarCollapsed')
+    if (saved !== null) {
+      sidebarCollapsed.value = saved === 'true'
+    }
+  })
   </script>
   
   <style scoped>
-  .app-layout {
-    @apply min-h-screen bg-gray-50 dark:bg-gray-900;
-    @apply transition-colors duration-200;
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
   }
   
-  .main-wrapper {
-    @apply transition-all duration-300 ease-in-out;
-    @apply min-h-screen flex flex-col;
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(10px);
   }
   
-  .main-content {
-    @apply flex-1 p-6;
+  .page-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
   }
   </style>

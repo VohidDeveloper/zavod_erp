@@ -1,66 +1,170 @@
 <template>
-    <div class="navbar-search">
-      <div class="search-icon">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </div>
+    <div class="relative hidden md:block">
       <input
         v-model="searchQuery"
         type="text"
         placeholder="Qidirish... (Ctrl+K)"
-        class="search-input"
-        @keydown.ctrl.k.prevent="focusSearch"
+        class="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        @focus="showResults = true"
+        @blur="handleBlur"
+        @keydown="handleKeydown"
       />
-      <div v-if="searchQuery" class="search-clear">
-        <button @click="clearSearch" class="clear-btn">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-          </svg>
-        </button>
-      </div>
+      
+      <MagnifyingGlassIcon class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+      
+      <!-- Search Results Dropdown -->
+      <transition name="dropdown">
+        <div
+          v-if="showResults && searchQuery"
+          class="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 max-h-96 overflow-y-auto z-50"
+        >
+          <div v-if="loading" class="px-4 py-3 text-center">
+            <Spinner size="sm" />
+          </div>
+          
+          <div v-else-if="filteredResults.length === 0" class="px-4 py-3 text-sm text-gray-500">
+            Natija topilmadi
+          </div>
+          
+          <template v-else>
+            <div
+              v-for="(result, index) in filteredResults"
+              :key="result.id"
+              @click="selectResult(result)"
+              :class="[
+                'px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors',
+                selectedIndex === index ? 'bg-gray-50' : ''
+              ]"
+            >
+              <div class="flex items-center gap-3">
+                <component :is="result.icon" class="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate">
+                    {{ result.title }}
+                  </p>
+                  <p class="text-xs text-gray-500 truncate">
+                    {{ result.description }}
+                  </p>
+                </div>
+                <kbd class="hidden sm:inline-block px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded">
+                  {{ result.shortcut }}
+                </kbd>
+              </div>
+            </div>
+          </template>
+        </div>
+      </transition>
     </div>
   </template>
   
   <script setup>
-  import { ref } from 'vue'
+  import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+  import {
+    HomeIcon,
+    CubeIcon,
+    ShoppingCartIcon,
+    CurrencyDollarIcon,
+    UsersIcon,
+    WrenchScrewdriverIcon,
+    ChartBarIcon,
+    Cog6ToothIcon
+  } from '@heroicons/vue/24/outline'
+  import { Spinner } from '@/components/common'
+  import { debounce } from '@/utils/helpers'
+  
+  const router = useRouter()
   
   const searchQuery = ref('')
+  const showResults = ref(false)
+  const loading = ref(false)
+  const selectedIndex = ref(0)
   
-  const focusSearch = () => {
-    // Focus search input
+  // Search items
+  const searchItems = [
+    { id: 1, title: 'Dashboard', description: 'Bosh sahifa', url: '/dashboard', icon: HomeIcon, shortcut: 'D' },
+    { id: 2, title: 'Ombor', description: 'Mahsulotlar va qoldiqlar', url: '/warehouse', icon: CubeIcon, shortcut: 'O' },
+    { id: 3, title: 'Ishlab chiqarish', description: 'Ishlab chiqarish jarayoni', url: '/production', icon: WrenchScrewdriverIcon, shortcut: 'I' },
+    { id: 4, title: 'Savdo', description: 'Buyurtmalar va sotuvlar', url: '/sales', icon: ShoppingCartIcon, shortcut: 'S' },
+    { id: 5, title: 'Moliya', description: 'To\'lovlar va hisobotlar', url: '/finance', icon: CurrencyDollarIcon, shortcut: 'M' },
+    { id: 6, title: 'Xodimlar', description: 'Xodimlar boshqaruvi', url: '/hr', icon: UsersIcon, shortcut: 'X' },
+    { id: 7, title: 'Analitika', description: 'Hisobotlar va grafiklar', url: '/analytics', icon: ChartBarIcon, shortcut: 'A' },
+    { id: 8, title: 'Sozlamalar', description: 'Tizim sozlamalari', url: '/settings', icon: Cog6ToothIcon, shortcut: ',' }
+  ]
+  
+  const filteredResults = computed(() => {
+    if (!searchQuery.value) return []
+    
+    const query = searchQuery.value.toLowerCase()
+    return searchItems.filter(item => 
+      item.title.toLowerCase().includes(query) || 
+      item.description.toLowerCase().includes(query)
+    ).slice(0, 8)
+  })
+  
+  const handleBlur = () => {
+    setTimeout(() => {
+      showResults.value = false
+    }, 200)
   }
   
-  const clearSearch = () => {
+  const handleKeydown = (event) => {
+    if (!showResults.value) return
+    
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault()
+        selectedIndex.value = Math.min(selectedIndex.value + 1, filteredResults.value.length - 1)
+        break
+      case 'ArrowUp':
+        event.preventDefault()
+        selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
+        break
+      case 'Enter':
+        event.preventDefault()
+        if (filteredResults.value[selectedIndex.value]) {
+          selectResult(filteredResults.value[selectedIndex.value])
+        }
+        break
+      case 'Escape':
+        showResults.value = false
+        break
+    }
+  }
+  
+  const selectResult = (result) => {
+    router.push(result.url)
     searchQuery.value = ''
+    showResults.value = false
   }
+  
+  // Global keyboard shortcut (Ctrl+K)
+  const handleGlobalKeydown = (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+      event.preventDefault()
+      document.querySelector('input[placeholder*="Qidirish"]')?.focus()
+    }
+  }
+  
+  onMounted(() => {
+    document.addEventListener('keydown', handleGlobalKeydown)
+  })
+  
+  onUnmounted(() => {
+    document.removeEventListener('keydown', handleGlobalKeydown)
+  })
   </script>
   
   <style scoped>
-  .navbar-search {
-    @apply relative w-full;
+  .dropdown-enter-active,
+  .dropdown-leave-active {
+    transition: all 0.2s ease;
   }
   
-  .search-icon {
-    @apply absolute left-3 top-1/2 -translate-y-1/2;
-    @apply text-gray-400 dark:text-gray-500 pointer-events-none;
-  }
-  
-  .search-input {
-    @apply w-full pl-10 pr-10 py-2 rounded-lg;
-    @apply bg-gray-100 dark:bg-gray-700;
-    @apply border border-transparent;
-    @apply text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-    @apply transition-all;
-  }
-  
-  .search-clear {
-    @apply absolute right-3 top-1/2 -translate-y-1/2;
-  }
-  
-  .clear-btn {
-    @apply text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300;
-    @apply transition-colors;
+  .dropdown-enter-from,
+  .dropdown-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
   }
   </style>

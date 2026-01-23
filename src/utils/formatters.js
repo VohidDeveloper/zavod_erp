@@ -1,60 +1,186 @@
-import { format, parseISO } from 'date-fns'
+import { formatDate, formatDateTime, formatTime, getRelativeTime } from './dateUtils'
+import { formatNumber, formatCurrency, formatPercent, formatCompact } from './numberUtils'
+import { truncate, formatPhone } from './stringUtils'
+import { 
+  STATUS_LABELS_UZ, 
+  STATUS_COLORS, 
+  ORDER_STATUS_COLORS, 
+  PAYMENT_STATUS_COLORS,
+  QUALITY_GRADE_COLORS,
+  PRIORITY_COLORS
+} from './constants'
 
 /**
- * Format number with thousand separators
+ * Format status with label
  */
-export function formatNumber(value, locale = 'uz-UZ') {
-  if (value === null || value === undefined || isNaN(value)) return '-'
-  return new Intl.NumberFormat(locale).format(value)
+export function formatStatus(status) {
+  return STATUS_LABELS_UZ[status] || status
 }
 
 /**
- * Format currency
+ * Get status color class
  */
-export function formatCurrency(value, currency = 'UZS', locale = 'uz-UZ') {
-  if (value === null || value === undefined || isNaN(value)) return '-'
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
+export function getStatusColor(status) {
+  return STATUS_COLORS[status] || 'gray'
 }
 
 /**
- * Format date
+ * Get order status color
  */
-export function formatDate(date, formatStr = 'dd.MM.yyyy') {
-  if (!date) return '-'
-  try {
-    const parsedDate = typeof date === 'string' ? parseISO(date) : date
-    return format(parsedDate, formatStr)
-  } catch (error) {
-    console.error('Date format error:', error)
-    return '-'
+export function getOrderStatusColor(status) {
+  return ORDER_STATUS_COLORS[status] || 'gray'
+}
+
+/**
+ * Get payment status color
+ */
+export function getPaymentStatusColor(status) {
+  return PAYMENT_STATUS_COLORS[status] || 'gray'
+}
+
+/**
+ * Get quality grade color
+ */
+export function getQualityGradeColor(grade) {
+  return QUALITY_GRADE_COLORS[grade] || 'gray'
+}
+
+/**
+ * Get priority color
+ */
+export function getPriorityColor(priority) {
+  return PRIORITY_COLORS[priority] || 'gray'
+}
+
+/**
+ * Format full name
+ */
+export function formatFullName(firstName, lastName, middleName = '') {
+  const parts = [lastName, firstName, middleName].filter(Boolean)
+  return parts.join(' ')
+}
+
+/**
+ * Format short name (initials)
+ */
+export function formatShortName(firstName, lastName) {
+  if (!firstName || !lastName) return '-'
+  return `${firstName.charAt(0)}.${lastName.charAt(0)}.`
+}
+
+/**
+ * Format address
+ */
+export function formatAddress(address) {
+  if (!address) return '-'
+  
+  const parts = []
+  if (address.region) parts.push(address.region)
+  if (address.district) parts.push(address.district)
+  if (address.street) parts.push(address.street)
+  if (address.building) parts.push(address.building)
+  
+  return parts.join(', ') || '-'
+}
+
+/**
+ * Format tin (tax identification number)
+ */
+export function formatTIN(tin) {
+  if (!tin) return '-'
+  return String(tin).replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')
+}
+
+/**
+ * Format warehouse stock
+ */
+export function formatStock(quantity, unit = 'kg') {
+  if (quantity === null || quantity === undefined) return '-'
+  return `${formatNumber(quantity)} ${unit}`
+}
+
+/**
+ * Format production output
+ */
+export function formatOutput(quantity, unit = 'kg', target = null) {
+  if (quantity === null || quantity === undefined) return '-'
+  
+  let result = `${formatNumber(quantity)} ${unit}`
+  
+  if (target) {
+    const percent = (quantity / target) * 100
+    result += ` (${formatPercent(percent)})`
+  }
+  
+  return result
+}
+
+/**
+ * Format quality percentage
+ */
+export function formatQuality(passed, total) {
+  if (!total || total === 0) return '-'
+  const percent = (passed / total) * 100
+  return formatPercent(percent)
+}
+
+/**
+ * Format efficiency
+ */
+export function formatEfficiency(actual, planned) {
+  if (!planned || planned === 0) return '-'
+  const percent = (actual / planned) * 100
+  return formatPercent(percent)
+}
+
+/**
+ * Format price with currency
+ */
+export function formatPrice(price, currency = 'UZS') {
+  return formatCurrency(price, currency)
+}
+
+/**
+ * Format total amount
+ */
+export function formatTotal(items, key = 'amount') {
+  if (!items || items.length === 0) return formatCurrency(0)
+  
+  const total = items.reduce((sum, item) => sum + (Number(item[key]) || 0), 0)
+  return formatCurrency(total)
+}
+
+/**
+ * Format discount
+ */
+export function formatDiscount(discount, type = 'percent') {
+  if (!discount) return '-'
+  
+  if (type === 'percent') {
+    return formatPercent(discount)
+  } else {
+    return formatCurrency(discount)
   }
 }
 
 /**
- * Format datetime
+ * Format duration in hours
  */
-export function formatDateTime(date) {
-  return formatDate(date, 'dd.MM.yyyy HH:mm')
-}
-
-/**
- * Format time
- */
-export function formatTime(date) {
-  return formatDate(date, 'HH:mm')
-}
-
-/**
- * Format percent
- */
-export function formatPercent(value, decimals = 1) {
-  if (value === null || value === undefined || isNaN(value)) return '-'
-  return `${value.toFixed(decimals)}%`
+export function formatDurationHours(hours) {
+  if (!hours) return '-'
+  
+  if (hours < 1) {
+    return `${Math.round(hours * 60)} daqiqa`
+  }
+  
+  const h = Math.floor(hours)
+  const m = Math.round((hours - h) * 60)
+  
+  if (m === 0) {
+    return `${h} soat`
+  }
+  
+  return `${h} soat ${m} daqiqa`
 }
 
 /**
@@ -62,74 +188,141 @@ export function formatPercent(value, decimals = 1) {
  */
 export function formatFileSize(bytes) {
   if (bytes === 0) return '0 Bytes'
+  
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
+  
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
 /**
- * Truncate string
+ * Format batch number
  */
-export function truncate(str, length = 50, suffix = '...') {
-  if (!str || str.length <= length) return str
-  return str.substring(0, length) + suffix
+export function formatBatchNumber(batchNumber) {
+  if (!batchNumber) return '-'
+  return `#${batchNumber}`
 }
 
 /**
- * Format phone number
+ * Format order number
  */
-export function formatPhone(phone) {
-  if (!phone) return '-'
-  // Format: +998 (90) 123-45-67
-  const cleaned = phone.replace(/\D/g, '')
-  const match = cleaned.match(/^(\d{3})(\d{2})(\d{3})(\d{2})(\d{2})$/)
-  if (match) {
-    return `+${match[1]} (${match[2]}) ${match[3]}-${match[4]}-${match[5]}`
-  }
-  return phone
+export function formatOrderNumber(orderNumber) {
+  if (!orderNumber) return '-'
+  return `ORD-${String(orderNumber).padStart(6, '0')}`
 }
 
 /**
- * Format status badge
+ * Format invoice number
  */
-export function getStatusBadgeClass(status) {
-  const statusMap = {
-    active: 'badge-success',
-    inactive: 'badge-secondary',
-    pending: 'badge-warning',
-    approved: 'badge-success',
-    rejected: 'badge-danger',
-    completed: 'badge-success',
-    cancelled: 'badge-danger',
-    sufficient: 'badge-success',
-    low: 'badge-warning',
-    critical: 'badge-danger',
-  }
-  return statusMap[status] || 'badge-secondary'
+export function formatInvoiceNumber(invoiceNumber) {
+  if (!invoiceNumber) return '-'
+  return `INV-${String(invoiceNumber).padStart(6, '0')}`
 }
 
 /**
- * Format status text (translate)
+ * Format shift number
  */
-export function getStatusText(status) {
-  const statusMap = {
-    active: 'Faol',
-    inactive: 'Faol emas',
-    pending: 'Kutilmoqda',
-    approved: 'Tasdiqlangan',
-    rejected: 'Rad etilgan',
-    completed: 'Yakunlangan',
-    cancelled: 'Bekor qilingan',
-    sufficient: 'Yetarli',
-    low: 'Kam',
-    critical: 'Kritik',
-    preparing: 'Tayyorlanmoqda',
-    in_transit: 'Yo\'lda',
-    delivered: 'Yetkazildi',
-    paid: 'To\'langan',
-    partial: 'Qisman',
-    unpaid: 'To\'lanmagan',
+export function formatShiftNumber(shiftNumber) {
+  if (!shiftNumber) return '-'
+  return `Smena #${shiftNumber}`
+}
+
+/**
+ * Format machine name
+ */
+export function formatMachineName(machine) {
+  if (!machine) return '-'
+  return `${machine.name} (${machine.code})`
+}
+
+/**
+ * Format employee name
+ */
+export function formatEmployeeName(employee) {
+  if (!employee) return '-'
+  return formatFullName(employee.first_name, employee.last_name, employee.middle_name)
+}
+
+/**
+ * Format customer name
+ */
+export function formatCustomerName(customer) {
+  if (!customer) return '-'
+  return customer.company_name || formatFullName(customer.first_name, customer.last_name)
+}
+
+/**
+ * Format boolean as Yes/No
+ */
+export function formatBoolean(value) {
+  return value ? 'Ha' : 'Yo\'q'
+}
+
+/**
+ * Format array as comma separated list
+ */
+export function formatList(items, key = null, limit = 3) {
+  if (!items || items.length === 0) return '-'
+  
+  const values = key ? items.map(item => item[key]) : items
+  const visible = values.slice(0, limit)
+  const remaining = values.length - limit
+  
+  let result = visible.join(', ')
+  if (remaining > 0) {
+    result += ` +${remaining}`
   }
-  return statusMap[status] || status
+  
+  return result
+}
+
+/**
+ * Format range
+ */
+export function formatRange(min, max, unit = '') {
+  if (min === null && max === null) return '-'
+  if (min === null) return `<= ${max} ${unit}`.trim()
+  if (max === null) return `>= ${min} ${unit}`.trim()
+  if (min === max) return `${min} ${unit}`.trim()
+  return `${min} - ${max} ${unit}`.trim()
+}
+
+/**
+ * Format change (increase/decrease)
+ */
+export function formatChange(current, previous) {
+  if (!previous || previous === 0) return '-'
+  
+  const change = ((current - previous) / previous) * 100
+  const sign = change > 0 ? '+' : ''
+  
+  return `${sign}${formatPercent(change)}`
+}
+
+/**
+ * Format variance
+ */
+export function formatVariance(actual, planned) {
+  if (!planned || planned === 0) return '-'
+  
+  const variance = actual - planned
+  const percent = (variance / planned) * 100
+  const sign = variance > 0 ? '+' : ''
+  
+  return `${sign}${formatNumber(variance)} (${sign}${formatPercent(percent)})`
+}
+
+// Re-export utilities
+export {
+  formatDate,
+  formatDateTime,
+  formatTime,
+  getRelativeTime,
+  formatNumber,
+  formatCurrency,
+  formatPercent,
+  formatCompact,
+  truncate,
+  formatPhone
 }

@@ -1,23 +1,24 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-export function useModal() {
-  const isOpen = ref(false)
-  const data = ref(null)
+export function useModal(initialState = false) {
+  const isOpen = ref(initialState)
+  const modalData = ref(null)
+  const loading = ref(false)
 
-  function open(modalData = null) {
-    data.value = modalData
+  const open = (data = null) => {
+    modalData.value = data
     isOpen.value = true
   }
 
-  function close() {
+  const close = () => {
     isOpen.value = false
-    // Clear data after animation
     setTimeout(() => {
-      data.value = null
-    }, 300)
+      modalData.value = null
+      loading.value = false
+    }, 300) // Wait for close animation
   }
 
-  function toggle() {
+  const toggle = () => {
     if (isOpen.value) {
       close()
     } else {
@@ -25,11 +26,65 @@ export function useModal() {
     }
   }
 
+  const setLoading = (value) => {
+    loading.value = value
+  }
+
+  const setData = (data) => {
+    modalData.value = data
+  }
+
   return {
     isOpen,
-    data,
+    modalData,
+    loading,
     open,
     close,
     toggle,
+    setLoading,
+    setData
+  }
+}
+
+// For managing multiple modals
+export function useModals() {
+  const modals = ref({})
+
+  const register = (name, initialState = false) => {
+    if (!modals.value[name]) {
+      modals.value[name] = useModal(initialState)
+    }
+    return modals.value[name]
+  }
+
+  const open = (name, data = null) => {
+    if (modals.value[name]) {
+      modals.value[name].open(data)
+    }
+  }
+
+  const close = (name) => {
+    if (modals.value[name]) {
+      modals.value[name].close()
+    }
+  }
+
+  const closeAll = () => {
+    Object.values(modals.value).forEach(modal => {
+      modal.close()
+    })
+  }
+
+  const isOpen = (name) => {
+    return modals.value[name]?.isOpen.value || false
+  }
+
+  return {
+    modals,
+    register,
+    open,
+    close,
+    closeAll,
+    isOpen
   }
 }

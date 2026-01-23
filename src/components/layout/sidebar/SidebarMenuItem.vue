@@ -1,196 +1,144 @@
 <template>
     <div>
-      <component
-        :is="hasSubmenu ? 'button' : 'router-link'"
-        :to="!hasSubmenu ? to : undefined"
-        :class="itemClasses"
-        @click="hasSubmenu ? toggleSubmenu() : null"
+      <!-- Main Menu Item -->
+      <router-link
+        v-if="!item.children"
+        :to="item.to"
+        v-slot="{ isActive }"
+        custom
       >
-        <!-- Icon -->
-        <component
-          v-if="icon"
-          :is="icon"
-          class="menu-icon"
-          :class="{ 'text-primary-600 dark:text-primary-400': isActive }"
-        />
-  
-        <!-- Label -->
-        <span v-if="!isCollapsed || sub" class="menu-label">
-          {{ label }}
-        </span>
-  
-        <!-- Badge -->
-        <span
-          v-if="badge && !isCollapsed"
-          class="menu-badge"
+        <a
+          @click="navigateTo(item.to)"
+          :class="[
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer group',
+            isActive
+              ? 'bg-blue-50 text-blue-600'
+              : 'text-gray-700 hover:bg-gray-50'
+          ]"
+          v-tooltip="collapsed ? item.name : ''"
         >
-          {{ badge }}
-        </span>
-  
-        <!-- Submenu Arrow -->
-        <svg
-          v-if="hasSubmenu && !isCollapsed"
-          class="menu-arrow"
-          :class="{ 'rotate-90': submenuOpen }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </component>
-  
-      <!-- Submenu -->
-      <Transition name="submenu">
-        <div v-if="hasSubmenu && submenuOpen && !isCollapsed" class="submenu">
-          <slot />
-        </div>
-      </Transition>
-  
-      <!-- Tooltip for collapsed state -->
-      <Teleport to="body">
-        <Transition name="fade">
-          <div
-            v-if="isCollapsed && showTooltip && !sub"
-            class="sidebar-tooltip"
-            :style="tooltipStyle"
+          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+          
+          <transition name="fade">
+            <span v-if="!collapsed" class="font-medium text-sm flex-1">
+              {{ item.name }}
+            </span>
+          </transition>
+          
+          <span
+            v-if="item.badge && !collapsed"
+            class="ml-auto px-2 py-0.5 text-xs font-medium bg-red-100 text-red-600 rounded-full"
           >
-            {{ label }}
-          </div>
-        </Transition>
-      </Teleport>
+            {{ item.badge }}
+          </span>
+        </a>
+      </router-link>
+      
+      <!-- Menu Item with Submenu -->
+      <div v-else>
+        <button
+          @click="toggleSubmenu"
+          :class="[
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group',
+            isSubmenuOpen || isChildActive
+              ? 'bg-gray-50 text-blue-600'
+              : 'text-gray-700 hover:bg-gray-50'
+          ]"
+          v-tooltip="collapsed ? item.name : ''"
+        >
+          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+          
+          <transition name="fade">
+            <span v-if="!collapsed" class="font-medium text-sm flex-1 text-left">
+              {{ item.name }}
+            </span>
+          </transition>
+          
+          <transition name="fade">
+            <ChevronDownIcon
+              v-if="!collapsed"
+              :class="[
+                'w-4 h-4 transition-transform flex-shrink-0',
+                isSubmenuOpen ? 'transform rotate-180' : ''
+              ]"
+            />
+          </transition>
+        </button>
+        
+        <!-- Submenu -->
+        <SidebarSubmenu
+          v-if="!collapsed"
+          :items="item.children"
+          :show="isSubmenuOpen"
+        />
+      </div>
     </div>
   </template>
   
   <script setup>
   import { ref, computed, watch } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { useRouter, useRoute } from 'vue-router'
+  import { ChevronDownIcon } from '@heroicons/vue/24/outline'
+  import SidebarSubmenu from './SidebarSubmenu.vue'
   
   const props = defineProps({
-    to: {
-      type: String,
-      default: ''
-    },
-    icon: {
+    item: {
       type: Object,
-      default: null
-    },
-    label: {
-      type: String,
       required: true
     },
-    badge: {
-      type: [Number, String],
-      default: null
-    },
-    isCollapsed: {
-      type: Boolean,
-      default: false
-    },
-    sub: {
+    collapsed: {
       type: Boolean,
       default: false
     }
   })
   
+  const router = useRouter()
   const route = useRoute()
-  const submenuOpen = ref(false)
-  const showTooltip = ref(false)
-  const tooltipStyle = ref({})
   
-  const hasSubmenu = computed(() => !!props.$slots?.default)
+  const isSubmenuOpen = ref(false)
   
-  const isActive = computed(() => {
-    if (!props.to) return false
-    return route.path.startsWith(props.to)
+  const isChildActive = computed(() => {
+    if (!props.item.children) return false
+    return props.item.children.some(child => route.path.startsWith(child.to))
   })
   
-  const itemClasses = computed(() => {
-    const base = [
-      'menu-item',
-      {
-        'menu-item-active': isActive.value,
-        'menu-item-sub': props.sub,
-        'justify-center': props.isCollapsed && !props.sub
-      }
-    ]
-    return base
+  // Auto-open submenu if child is active
+  watch(() => route.path, (newPath) => {
+    if (isChildActive.value) {
+      isSubmenuOpen.value = true
+    }
+  }, { immediate: true })
+  
+  // Close submenu when sidebar collapses
+  watch(() => props.collapsed, (newVal) => {
+    if (newVal) {
+      isSubmenuOpen.value = false
+    }
   })
   
   const toggleSubmenu = () => {
-    submenuOpen.value = !submenuOpen.value
+    if (!props.collapsed) {
+      isSubmenuOpen.value = !isSubmenuOpen.value
+    } else {
+      // Navigate to parent route when collapsed
+      navigateTo(props.item.to)
+    }
   }
   
-  // Auto-open submenu if child route is active
-  watch(() => route.path, (newPath) => {
-    if (props.to && newPath.startsWith(props.to) && hasSubmenu.value) {
-      submenuOpen.value = true
-    }
-  }, { immediate: true })
+  const navigateTo = (path) => {
+    router.push(path)
+  }
   </script>
   
   <style scoped>
-  .menu-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg;
-    @apply text-gray-700 dark:text-gray-300;
-    @apply hover:bg-gray-100 dark:hover:bg-gray-700/50;
-    @apply transition-all duration-200;
-    @apply relative;
-    @apply w-full text-left;
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.2s ease;
   }
   
-  .menu-item-active {
-    @apply bg-primary-50 dark:bg-primary-900/20;
-    @apply text-primary-600 dark:text-primary-400;
-    @apply font-medium;
-  }
-  
-  .menu-item-sub {
-    @apply text-sm py-2 pl-11;
-  }
-  
-  .menu-icon {
-    @apply w-5 h-5 flex-shrink-0;
-  }
-  
-  .menu-label {
-    @apply flex-1 truncate;
-  }
-  
-  .menu-badge {
-    @apply px-2 py-0.5 text-xs font-medium rounded-full;
-    @apply bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400;
-  }
-  
-  .menu-arrow {
-    @apply w-4 h-4 transition-transform;
-  }
-  
-  .submenu {
-    @apply space-y-1 mt-1;
-  }
-  
-  .sidebar-tooltip {
-    @apply fixed z-[100] px-3 py-2 text-sm;
-    @apply bg-gray-900 dark:bg-gray-700 text-white rounded-lg;
-    @apply shadow-lg pointer-events-none;
-    @apply whitespace-nowrap;
-  }
-  
-  /* Transitions */
-  .submenu-enter-active,
-  .submenu-leave-active {
-    transition: all 0.3s ease;
-  }
-  
-  .submenu-enter-from {
+  .fade-enter-from,
+  .fade-leave-to {
     opacity: 0;
-    transform: translateY(-10px);
-  }
-  
-  .submenu-leave-to {
-    opacity: 0;
-    transform: translateY(-10px);
-    max-height: 0;
   }
   </style>
+  

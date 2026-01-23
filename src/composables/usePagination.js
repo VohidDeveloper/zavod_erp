@@ -1,90 +1,125 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
-export function usePagination(fetchFunction, initialPage = 1, initialPageSize = 20) {
+export function usePagination(options = {}) {
+  const {
+    initialPage = 1,
+    initialPerPage = 10,
+    totalItems = ref(0),
+    onPageChange = null
+  } = options
+
   const currentPage = ref(initialPage)
-  const pageSize = ref(initialPageSize)
-  const total = ref(0)
-  const items = ref([])
-  const loading = ref(false)
-  const error = ref(null)
+  const perPage = ref(initialPerPage)
 
-  const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-  const hasNext = computed(() => currentPage.value < totalPages.value)
-  const hasPrev = computed(() => currentPage.value > 1)
+  const totalPages = computed(() => {
+    return Math.ceil(totalItems.value / perPage.value)
+  })
 
-  async function fetchData(params = {}) {
-    loading.value = true
-    error.value = null
+  const startItem = computed(() => {
+    return (currentPage.value - 1) * perPage.value + 1
+  })
 
-    try {
-      const response = await fetchFunction({
-        page: currentPage.value,
-        page_size: pageSize.value,
-        ...params,
-      })
+  const endItem = computed(() => {
+    const end = currentPage.value * perPage.value
+    return end > totalItems.value ? totalItems.value : end
+  })
 
-      items.value = response.items
-      total.value = response.total
+  const hasNextPage = computed(() => {
+    return currentPage.value < totalPages.value
+  })
 
-      return response
-    } catch (err) {
-      error.value = err
-      throw err
-    } finally {
-      loading.value = false
-    }
+  const hasPreviousPage = computed(() => {
+    return currentPage.value > 1
+  })
+
+  const isFirstPage = computed(() => {
+    return currentPage.value === 1
+  })
+
+  const isLastPage = computed(() => {
+    return currentPage.value === totalPages.value
+  })
+
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages.value) return
+    currentPage.value = page
   }
 
-  function nextPage() {
-    if (hasNext.value) {
+  const nextPage = () => {
+    if (hasNextPage.value) {
       currentPage.value++
-      fetchData()
     }
   }
 
-  function prevPage() {
-    if (hasPrev.value) {
+  const previousPage = () => {
+    if (hasPreviousPage.value) {
       currentPage.value--
-      fetchData()
     }
   }
 
-  function goToPage(page) {
-    if (page >= 1 && page <= totalPages.value) {
-      currentPage.value = page
-      fetchData()
-    }
-  }
-
-  function changePageSize(size) {
-    pageSize.value = size
+  const firstPage = () => {
     currentPage.value = 1
-    fetchData()
   }
 
-  function reset() {
-    currentPage.value = initialPage
-    pageSize.value = initialPageSize
-    total.value = 0
-    items.value = []
-    error.value = null
+  const lastPage = () => {
+    currentPage.value = totalPages.value
   }
+
+  const setPerPage = (value) => {
+    perPage.value = value
+    currentPage.value = 1
+  }
+
+  const reset = () => {
+    currentPage.value = initialPage
+    perPage.value = initialPerPage
+  }
+
+  const getPageRange = (maxVisible = 5) => {
+    const pages = []
+    const half = Math.floor(maxVisible / 2)
+    
+    let start = Math.max(1, currentPage.value - half)
+    let end = Math.min(totalPages.value, start + maxVisible - 1)
+    
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1)
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+    
+    return pages
+  }
+
+  // Watch for page changes
+  watch(currentPage, (newPage) => {
+    if (onPageChange) {
+      onPageChange(newPage)
+    }
+  })
 
   return {
+    // State
     currentPage,
-    pageSize,
-    total,
+    perPage,
     totalPages,
-    items,
-    loading,
-    error,
-    hasNext,
-    hasPrev,
-    fetchData,
-    nextPage,
-    prevPage,
+    startItem,
+    endItem,
+    hasNextPage,
+    hasPreviousPage,
+    isFirstPage,
+    isLastPage,
+    
+    // Methods
     goToPage,
-    changePageSize,
+    nextPage,
+    previousPage,
+    firstPage,
+    lastPage,
+    setPerPage,
     reset,
+    getPageRange
   }
 }

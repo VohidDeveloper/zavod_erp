@@ -1,47 +1,55 @@
-import api from './api'
+import { apiClient } from './api'
 
-export const authService = {
-  /**
-   * Login
-   */
-  async login(credentials) {
-    const response = await api.post('/auth/login', credentials)
-    return response
+const authService = {
+  // Login
+  login(credentials) {
+    return apiClient.post('/auth/login', credentials)
   },
 
-  /**
-   * Logout
-   */
-  async logout() {
-    const response = await api.post('/auth/logout')
-    return response
+  // Logout
+  logout() {
+    return apiClient.post('/auth/logout')
   },
 
-  /**
-   * Get current user
-   */
-  async getCurrentUser() {
-    const response = await api.get('/auth/me')
-    return response
+  // Register
+  register(data) {
+    return apiClient.post('/auth/register', data)
   },
 
-  /**
-   * Refresh token
-   */
-  async refreshToken(refreshToken) {
-    const response = await api.post('/auth/refresh', {
-      refresh_token: refreshToken
-    })
-    return response
+  // Get current user
+  me() {
+    return apiClient.get('/auth/me')
   },
 
-  /**
-   * Change password
-   */
-  async changePassword(data) {
-    const response = await api.put('/auth/change-password', data)
-    return response
+  // Refresh token
+  refresh() {
+    return apiClient.post('/auth/refresh')
   },
+
+  // Change password
+  changePassword(data) {
+    return apiClient.post('/auth/change-password', data)
+  },
+
+  // Forgot password
+  forgotPassword(email) {
+    return apiClient.post('/auth/forgot-password', { email })
+  },
+
+  // Reset password
+  resetPassword(data) {
+    return apiClient.post('/auth/reset-password', data)
+  },
+
+  // Verify email
+  verifyEmail(token) {
+    return apiClient.post('/auth/verify-email', { token })
+  },
+
+  // Resend verification email
+  resendVerification(email) {
+    return apiClient.post('/auth/resend-verification', { email })
+  }
 }
 
 export default authService

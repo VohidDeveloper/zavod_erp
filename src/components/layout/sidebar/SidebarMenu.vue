@@ -1,195 +1,170 @@
 <template>
-    <nav class="sidebar-nav">
-      <div class="nav-section">
-        <p v-if="!isCollapsed" class="nav-section-title">Asosiy</p>
+    <nav class="flex-1 overflow-y-auto py-4 custom-scrollbar">
+      <div v-for="group in menuGroups" :key="group.name" class="mb-6">
+        <!-- Group Title -->
+        <div
+          v-if="!collapsed && group.name"
+          class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider"
+        >
+          {{ group.name }}
+        </div>
         
-        <SidebarMenuItem
-          to="/dashboard"
-          :icon="HomeIcon"
-          label="Dashboard"
-          :is-collapsed="isCollapsed"
-        />
-      </div>
-  
-      <div class="nav-section">
-        <p v-if="!isCollapsed" class="nav-section-title">Modullar</p>
-  
-        <!-- Warehouse -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:warehouse')"
-          to="/warehouse"
-          :icon="CubeIcon"
-          label="Ombor"
-          :is-collapsed="isCollapsed"
-          :badge="lowStockCount"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/warehouse/receipts" label="Qabul qilish" sub />
-            <SidebarMenuItem to="/warehouse/stock" label="Qoldiqlar" sub />
-            <SidebarMenuItem to="/warehouse/requests" label="So'rovlar" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-  
-        <!-- Production -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:production')"
-          to="/production"
-          :icon="CogIcon"
-          label="Ishlab chiqarish"
-          :is-collapsed="isCollapsed"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/production/shifts" label="Smenalar" sub />
-            <SidebarMenuItem to="/production/lines" label="Liniyalar" sub />
-            <SidebarMenuItem to="/production/output" label="Mahsulot" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-  
-        <!-- Sales -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:sales')"
-          to="/sales"
-          :icon="ShoppingCartIcon"
-          label="Sotuv"
-          :is-collapsed="isCollapsed"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/sales/customers" label="Mijozlar" sub />
-            <SidebarMenuItem to="/sales/orders" label="Buyurtmalar" sub />
-            <SidebarMenuItem to="/sales/products" label="Mahsulotlar" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-  
-        <!-- Finance -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:finance')"
-          to="/finance"
-          :icon="CurrencyDollarIcon"
-          label="Moliya"
-          :is-collapsed="isCollapsed"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/finance/transactions" label="Operatsiyalar" sub />
-            <SidebarMenuItem to="/finance/reports" label="Hisobotlar" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-  
-        <!-- HR -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:hr')"
-          to="/hr"
-          :icon="UsersIcon"
-          label="HR"
-          :is-collapsed="isCollapsed"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/hr/employees" label="Xodimlar" sub />
-            <SidebarMenuItem to="/hr/attendance" label="Davomat" sub />
-            <SidebarMenuItem to="/hr/salaries" label="Ish haqi" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-  
-        <!-- Maintenance -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:maintenance')"
-          to="/maintenance"
-          :icon="WrenchIcon"
-          label="Texnik xizmat"
-          :is-collapsed="isCollapsed"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/maintenance/machines" label="Uskunalar" sub />
-            <SidebarMenuItem to="/maintenance/requests" label="So'rovlar" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-  
-        <!-- Analytics -->
-        <SidebarMenuItem
-          v-if="hasPermission('read:analytics')"
-          to="/analytics"
-          :icon="ChartBarIcon"
-          label="Analitika"
-          :is-collapsed="isCollapsed"
-        >
-          <SidebarSubmenu v-if="!isCollapsed">
-            <SidebarMenuItem to="/analytics/production" label="Ishlab chiqarish" sub />
-            <SidebarMenuItem to="/analytics/sales" label="Sotuv" sub />
-            <SidebarMenuItem to="/analytics/finance" label="Moliya" sub />
-          </SidebarSubmenu>
-        </SidebarMenuItem>
-      </div>
-  
-      <!-- Settings -->
-      <div v-if="hasPermission('manage:users')" class="nav-section">
-        <p v-if="!isCollapsed" class="nav-section-title">Tizim</p>
+        <!-- Divider for collapsed mode -->
+        <div v-else-if="collapsed && group.name" class="mx-4 mb-4 border-t border-gray-200"></div>
         
-        <SidebarMenuItem
-          to="/settings"
-          :icon="CogIcon"
-          label="Sozlamalar"
-          :is-collapsed="isCollapsed"
-        />
+        <!-- Menu Items -->
+        <div class="space-y-1 px-2">
+          <SidebarMenuItem
+            v-for="item in group.items"
+            :key="item.to"
+            :item="item"
+            :collapsed="collapsed"
+          />
+        </div>
       </div>
     </nav>
   </template>
   
   <script setup>
-  import { ref } from 'vue'
-  import { useAuth } from '@/composables/useAuth'
+  import { computed } from 'vue'
+  import SidebarMenuItem from './SidebarMenuItem.vue'
   import {
     HomeIcon,
     CubeIcon,
-    CogIcon,
     ShoppingCartIcon,
     CurrencyDollarIcon,
     UsersIcon,
-    WrenchIcon,
     ChartBarIcon,
+    WrenchScrewdriverIcon,
+    Cog6ToothIcon
   } from '@heroicons/vue/24/outline'
-  import SidebarMenuItem from './SidebarMenuItem.vue'
-  import SidebarSubmenu from './SidebarSubmenu.vue'
   
-  defineProps({
-    isCollapsed: {
+  const props = defineProps({
+    collapsed: {
       type: Boolean,
       default: false
     }
   })
   
-  const { hasPermission } = useAuth()
-  const lowStockCount = ref(5) // This should come from store
+  const menuGroups = computed(() => [
+    {
+      name: 'Asosiy',
+      items: [
+        {
+          name: 'Dashboard',
+          to: '/dashboard',
+          icon: HomeIcon
+        }
+      ]
+    },
+    {
+      name: 'Ishlab chiqarish',
+      items: [
+        {
+          name: 'Ombor',
+          to: '/warehouse',
+          icon: CubeIcon,
+          badge: null,
+          children: [
+            { name: 'Mahsulotlar', to: '/warehouse/products' },
+            { name: 'Qabul qilish', to: '/warehouse/receipts' },
+            { name: 'Chiqim', to: '/warehouse/issues' },
+            { name: 'Qoldiqlar', to: '/warehouse/inventory' }
+          ]
+        },
+        {
+          name: 'Ishlab chiqarish',
+          to: '/production',
+          icon: WrenchScrewdriverIcon,
+          children: [
+            { name: 'Buyurtmalar', to: '/production/orders' },
+            { name: 'Smenalar', to: '/production/shifts' },
+            { name: 'Nazorat', to: '/production/quality' }
+          ]
+        }
+      ]
+    },
+    {
+      name: 'Savdo',
+      items: [
+        {
+          name: 'Savdo',
+          to: '/sales',
+          icon: ShoppingCartIcon,
+          children: [
+            { name: 'Buyurtmalar', to: '/sales/orders' },
+            { name: 'Mijozlar', to: '/sales/customers' },
+            { name: 'Yetkazish', to: '/sales/deliveries' }
+          ]
+        },
+        {
+          name: 'Moliya',
+          to: '/finance',
+          icon: CurrencyDollarIcon,
+          children: [
+            { name: 'To\'lovlar', to: '/finance/payments' },
+            { name: 'Hisobotlar', to: '/finance/reports' }
+          ]
+        }
+      ]
+    },
+    {
+      name: 'Boshqaruv',
+      items: [
+        {
+          name: 'Xodimlar',
+          to: '/hr',
+          icon: UsersIcon,
+          children: [
+            { name: 'Xodimlar ro\'yxati', to: '/hr/employees' },
+            { name: 'Ish haqi', to: '/hr/payroll' },
+            { name: 'Davomat', to: '/hr/attendance' }
+          ]
+        },
+        {
+          name: 'Ta\'mirlash',
+          to: '/maintenance',
+          icon: WrenchScrewdriverIcon,
+          children: [
+            { name: 'Uskunalar', to: '/maintenance/equipment' },
+            { name: 'Ta\'mirlar', to: '/maintenance/repairs' }
+          ]
+        },
+        {
+          name: 'Analitika',
+          to: '/analytics',
+          icon: ChartBarIcon
+        }
+      ]
+    },
+    {
+      name: 'Sistema',
+      items: [
+        {
+          name: 'Sozlamalar',
+          to: '/settings',
+          icon: Cog6ToothIcon
+        }
+      ]
+    }
+  ])
   </script>
   
   <style scoped>
-  .sidebar-nav {
-    @apply flex-1 overflow-y-auto overflow-x-hidden;
-    @apply py-4 px-3;
-    @apply space-y-6;
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
   }
   
-  .nav-section {
-    @apply space-y-1;
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
   }
   
-  .nav-section-title {
-    @apply px-3 text-xs font-semibold text-gray-500 dark:text-gray-400;
-    @apply uppercase tracking-wider mb-2;
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 3px;
   }
   
-  /* Custom Scrollbar */
-  .sidebar-nav::-webkit-scrollbar {
-    @apply w-2;
-  }
-  
-  .sidebar-nav::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  
-  .sidebar-nav::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
-  }
-  
-  .sidebar-nav::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
   }
   </style>

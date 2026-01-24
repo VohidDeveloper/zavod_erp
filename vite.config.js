@@ -6,11 +6,21 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   server: {
-    port: 5000,
-    host: true
-  }
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1500,
+  },
 })

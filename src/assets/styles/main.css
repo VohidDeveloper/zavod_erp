@@ -1,177 +1,119 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
+/* Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables */
 @layer base {
+  :root {
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+  }
+
   * {
-    @apply border-gray-200;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
-  
+
   body {
-    @apply bg-gray-50 text-gray-900 font-sans antialiased;
-  }
-  
-  html, body, #app {
-    @apply h-full;
+    @apply bg-gray-50 text-gray-900;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
   }
 }
 
+/* Custom Components */
 @layer components {
-  /* Buttons */
-  .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200;
-    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white;
-    @apply hover:from-primary-600 hover:to-primary-700 focus:ring-primary-500;
-    @apply shadow-lg shadow-primary-500/50;
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
+
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500;
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
+
   .btn-success {
-    @apply bg-gradient-to-r from-success-500 to-success-600 text-white;
-    @apply hover:from-success-600 hover:to-success-700 focus:ring-success-500;
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
+
   .btn-danger {
-    @apply bg-gradient-to-r from-danger-500 to-danger-600 text-white;
-    @apply hover:from-danger-600 hover:to-danger-700 focus:ring-danger-500;
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
-  .btn-ghost {
-    @apply bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
-  }
-  
-  .btn-sm {
-    @apply px-3 py-1.5 text-sm;
-  }
-  
-  .btn-lg {
-    @apply px-6 py-3 text-lg;
-  }
-  
-  /* Cards */
-  .card {
-    @apply bg-white rounded-xl shadow-md overflow-hidden;
-    @apply transition-all duration-300;
-  }
-  
-  .card-hover {
-    @apply cursor-pointer hover:shadow-xl hover:-translate-y-1;
-  }
-  
-  .card-header {
-    @apply px-6 py-4 border-b border-gray-200 bg-gray-50;
-  }
-  
-  .card-body {
-    @apply p-6;
-  }
-  
-  .card-footer {
-    @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
-  }
-  
-  /* Inputs */
+
   .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-    @apply transition-all duration-200;
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
   }
-  
-  .input-error {
-    @apply border-danger-500 focus:ring-danger-500;
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
   }
-  
-  /* Badges */
+
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-  
+
   .badge-primary {
-    @apply bg-primary-100 text-primary-800;
+    @apply bg-blue-100 text-blue-800;
   }
-  
+
   .badge-success {
-    @apply bg-success-100 text-success-800;
+    @apply bg-green-100 text-green-800;
   }
-  
+
   .badge-warning {
-    @apply bg-warning-100 text-warning-800;
+    @apply bg-yellow-100 text-yellow-800;
   }
-  
+
   .badge-danger {
-    @apply bg-danger-100 text-danger-800;
-  }
-  
-  /* Skeleton Loading */
-  .skeleton {
-    @apply bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200;
-    @apply bg-[length:1000px_100%] rounded;
-    animation: shimmer 2s infinite linear;
-  }
-  
-  /* Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    @apply w-2 h-2;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-400 rounded hover:bg-gray-500;
+    @apply bg-red-100 text-red-800;
   }
 }
 
+/* Custom Utilities */
 @layer utilities {
-  /* Page Transitions */
-  .fade-enter-active,
-  .fade-leave-active {
-    @apply transition-opacity duration-300 ease-in-out;
+  .text-balance {
+    text-wrap: balance;
   }
-  
-  .fade-enter-from,
-  .fade-leave-to {
-    @apply opacity-0;
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-  
-  .slide-enter-active,
-  .slide-leave-active {
-    @apply transition-all duration-300 ease-in-out;
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
-  
-  .slide-enter-from {
-    @apply translate-x-5 opacity-0;
-  }
-  
-  .slide-leave-to {
-    @apply -translate-x-5 opacity-0;
-  }
-  
-  /* List Transitions */
-  .list-enter-active,
-  .list-leave-active {
-    @apply transition-all duration-500 ease-in-out;
-  }
-  
-  .list-enter-from {
-    @apply opacity-0 -translate-y-5;
-  }
-  
-  .list-leave-to {
-    @apply opacity-0 translate-y-5;
-  }
-  
-  .list-move {
-    @apply transition-transform duration-500 ease-in-out;
-  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
 }

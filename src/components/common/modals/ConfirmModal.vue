@@ -1,88 +1,93 @@
 <template>
-    <BaseModal
-      :show="show"
-      :title="title"
-      :size="size"
-      @close="handleCancel"
-    >
-      <div class="text-sm text-gray-600">
-        <slot>{{ message }}</slot>
+  <Modal
+    v-model="isOpen"
+    :title="title"
+    size="sm"
+    @close="handleCancel"
+  >
+    <!-- Message -->
+    <div class="text-sm text-gray-600">
+      <slot>
+        {{ message }}
+      </slot>
+    </div>
+
+    <!-- Footer -->
+    <template #footer>
+      <div class="flex items-center justify-end space-x-3">
+        <button
+          type="button"
+          @click="handleCancel"
+          :disabled="loading"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+        >
+          {{ cancelText }}
+        </button>
+        <button
+          type="button"
+          @click="handleConfirm"
+          :disabled="loading"
+          :class="[
+            'px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50',
+            type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+          ]"
+        >
+          {{ loading ? 'Yuklanmoqda...' : confirmText }}
+        </button>
       </div>
-      
-      <template #footer>
-        <div class="flex justify-end gap-3">
-          <BaseButton
-            variant="outline"
-            @click="handleCancel"
-            :disabled="loading"
-          >
-            {{ cancelText }}
-          </BaseButton>
-          
-          <BaseButton
-            :variant="type === 'danger' ? 'danger' : 'primary'"
-            @click="handleConfirm"
-            :loading="loading"
-          >
-            {{ confirmText }}
-          </BaseButton>
-        </div>
-      </template>
-    </BaseModal>
-  </template>
-  
-  <script setup>
-  import { ref } from 'vue'
-  import BaseModal from './BaseModal.vue'
-  import BaseButton from './BaseButton.vue'
-  
-  const props = defineProps({
-    show: {
-      type: Boolean,
-      required: true
-    },
-    title: {
-      type: String,
-      default: 'Tasdiqlash'
-    },
-    message: {
-      type: String,
-      default: 'Ushbu amalni bajarishni xohlaysizmi?'
-    },
-    type: {
-      type: String,
-      default: 'default',
-      validator: (value) => ['default', 'danger'].includes(value)
-    },
-    size: {
-      type: String,
-      default: 'sm'
-    },
-    confirmText: {
-      type: String,
-      default: 'Tasdiqlash'
-    },
-    cancelText: {
-      type: String,
-      default: 'Bekor qilish'
-    }
-  })
-  
-  const emit = defineEmits(['confirm', 'cancel', 'close'])
-  
-  const loading = ref(false)
-  
-  const handleConfirm = async () => {
-    loading.value = true
-    try {
-      await emit('confirm')
-    } finally {
-      loading.value = false
-    }
+    </template>
+  </Modal>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import Modal from './Modal.vue'
+
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    default: false
+  },
+  title: {
+    type: String,
+    default: 'Tasdiqlash'
+  },
+  message: {
+    type: String,
+    default: 'Rostdan ham davom etmoqchimisiz?'
+  },
+  confirmText: {
+    type: String,
+    default: 'Tasdiqlash'
+  },
+  cancelText: {
+    type: String,
+    default: 'Bekor qilish'
+  },
+  type: {
+    type: String,
+    default: 'primary',
+    validator: (value) => ['primary', 'danger'].includes(value)
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
-  
-  const handleCancel = () => {
-    emit('cancel')
-    emit('close')
-  }
-  </script>
+})
+
+const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
+
+const isOpen = computed({
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value)
+})
+
+const handleConfirm = () => {
+  emit('confirm')
+}
+
+const handleCancel = () => {
+  emit('cancel')
+  isOpen.value = false
+}
+</script>

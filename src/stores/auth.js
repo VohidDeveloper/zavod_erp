@@ -1,58 +1,125 @@
 import { defineStore } from 'pinia'
-import { authService } from '@/services/authService'
+import { api } from '@/plugins/axios'
+import { STORAGE_KEYS } from '@/utils/constants'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    token: localStorage.getItem('token') || null,
-    refreshToken: localStorage.getItem('refreshToken') || null,
+    token: localStorage.getItem(STORAGE_KEYS.TOKEN) || null,
+    refreshToken: localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) || null,
+    isAuthenticated: !!localStorage.getItem(STORAGE_KEYS.TOKEN),
     loading: false,
-    error: null
+    error: null,
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token,
-    
-    userRole: (state) => state.user?.role || null,
-    
-    userPermissions: (state) => state.user?.permissions || [],
-    
-    userName: (state) => state.user?.name || '',
-    
-    userEmail: (state) => state.user?.email || ''
+    /**
+     * Get current user
+     */
+    currentUser: (state) => state.user,
+
+    /**
+     * Check if user is authenticated
+     */
+    isLoggedIn: (state) => state.isAuthenticated && !!state.user,
+
+    /**
+     * Get user role
+     */
+    userRole: (state) => state.user?.role?.name || null,
+
+    /**
+     * Get user permissions
+     */
+    userPermissions: (state) => state.user?.role?.permissions || [],
+
+    /**
+     * Check if user has specific permission
+     */
+    hasPermission: (state) => (permission) => {
+      if (!state.user?.role?.permissions) return false
+      return state.user.role.permissions.includes(permission)
+    },
+
+    /**
+     * Check if user has any of the permissions
+     */
+    hasAnyPermission: (state) => (permissions) => {
+      if (!state.user?.role?.permissions) return false
+      return permissions.some(p => state.user.role.permissions.includes(p))
+    },
+
+    /**
+     * Check if user has all permissions
+     */
+    hasAllPermissions: (state) => (permissions) => {
+      if (!state.user?.role?.permissions) return false
+      return permissions.every(p => state.user.role.permissions.includes(p))
+    },
+
+    /**
+     * Check if user has specific role
+     */
+    hasRole: (state) => (roleName) => {
+      return state.user?.role?.name === roleName
+    },
+
+    /**
+     * Get user full name
+     */
+    userFullName: (state) => {
+      if (!state.user) return ''
+      const { first_name, last_name, middle_name } = state.user
+      return [last_name, first_name, middle_name].filter(Boolean).join(' ')
+    },
+
+    /**
+     * Get user initials
+     */
+    userInitials: (state) => {
+      if (!state.user) return ''
+      const { first_name, last_name } = state.user
+      return `${first_name?.charAt(0) || ''}${last_name?.charAt(0) || ''}`
+    },
   },
 
   actions: {
-    // Login
+    /**
+     * Login user
+     */
     async login(credentials) {
       this.loading = true
       this.error = null
 
       try {
-        const response = await authService.login(credentials)
-        
-        this.token = response.token
-        this.refreshToken = response.refreshToken
-        this.user = response.user
+        const response = await api.post('/auth/login', credentials)
+        const { access_token, refresh_token, user } = response
+
+        this.token = access_token
+        this.refreshToken = refresh_token
+        this.user = user
+        this.isAuthenticated = true
 
         // Save to localStorage
-        localStorage.setItem('token', response.token)
-        localStorage.setItem('refreshToken', response.refreshToken)
-        localStorage.setItem('user', JSON.stringify(response.user))
+        localStorage.setItem(STORAGE_KEYS.TOKEN, access_token)
+        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refresh_token)
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
 
         return response
       } catch (error) {
-        this.error = error.response?.data?.message || 'Login xatolik'
+        this.error = error.response?.data?.detail || 'Login failed'
         throw error
       } finally {
         this.loading = false
       }
     },
 
-    // Logout
+    /**
+     * Logout user
+     */
     async logout() {
       try {
-        await authService.logout()
+        await api.post('/auth/logout')
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
@@ -60,94 +127,173 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Clear authentication data
+    /**
+     * Clear authentication data
+     */
     clearAuth() {
       this.user = null
       this.token = null
       this.refreshToken = null
+      this.isAuthenticated = false
       this.error = null
 
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
+      localStorage.removeItem(STORAGE_KEYS.TOKEN)
+      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
+      localStorage.removeItem(STORAGE_KEYS.USER)
     },
 
-    // Fetch current user
-    async fetchUser() {
+    /**
+     * Fetch current user
+     */
+    async fetchCurrentUser() {
       if (!this.token) return
 
       this.loading = true
-
       try {
-        const response = await authService.getUser()
-        this.user = response.user
-        localStorage.setItem('user', JSON.stringify(response.user))
+        const user = await api.get('/auth/me')
+        this.user = user
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
       } catch (error) {
         console.error('Fetch user error:', error)
-        if (error.response?.status === 401) {
-          this.clearAuth()
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Change password
-    async changePassword(data) {
-      this.loading = true
-      this.error = null
-
-      try {
-        await authService.changePassword(data)
-        return true
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Parol o\'zgartirish xatolik'
+        this.clearAuth()
         throw error
       } finally {
         this.loading = false
       }
     },
 
-    // Refresh token
-    async refreshAuthToken() {
+    /**
+     * Refresh access token
+     */
+    async refreshAccessToken() {
       if (!this.refreshToken) {
-        this.clearAuth()
-        return false
+        throw new Error('No refresh token available')
       }
 
       try {
-        const response = await authService.refreshToken(this.refreshToken)
-        
-        this.token = response.token
-        localStorage.setItem('token', response.token)
+        const response = await api.post('/auth/refresh', {
+          refresh_token: this.refreshToken,
+        })
 
-        if (response.refreshToken) {
-          this.refreshToken = response.refreshToken
-          localStorage.setItem('refreshToken', response.refreshToken)
-        }
+        const { access_token } = response
+        this.token = access_token
+        localStorage.setItem(STORAGE_KEYS.TOKEN, access_token)
 
-        return true
+        return access_token
       } catch (error) {
         console.error('Token refresh error:', error)
         this.clearAuth()
-        return false
+        throw error
       }
     },
 
-    // Initialize auth from localStorage
-    initAuth() {
-      const token = localStorage.getItem('token')
-      const user = localStorage.getItem('user')
+    /**
+     * Update user profile
+     */
+    async updateProfile(data) {
+      this.loading = true
+      this.error = null
 
-      if (token && user) {
-        this.token = token
+      try {
+        const updated = await api.put('/auth/profile', data)
+        this.user = { ...this.user, ...updated }
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(this.user))
+        return updated
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Update failed'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Change password
+     */
+    async changePassword(data) {
+      this.loading = true
+      this.error = null
+
+      try {
+        await api.post('/auth/change-password', data)
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Password change failed'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Register new user
+     */
+    async register(userData) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.post('/auth/register', userData)
+        return response
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Registration failed'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Request password reset
+     */
+    async requestPasswordReset(email) {
+      this.loading = true
+      this.error = null
+
+      try {
+        await api.post('/auth/forgot-password', { email })
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Request failed'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Reset password with token
+     */
+    async resetPassword(token, password) {
+      this.loading = true
+      this.error = null
+
+      try {
+        await api.post('/auth/reset-password', { token, password })
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Reset failed'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Initialize auth from localStorage
+     */
+    initAuth() {
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN)
+      const userStr = localStorage.getItem(STORAGE_KEYS.USER)
+
+      if (token && userStr) {
         try {
-          this.user = JSON.parse(user)
-        } catch (e) {
-          console.error('Parse user error:', e)
+          this.token = token
+          this.refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
+          this.user = JSON.parse(userStr)
+          this.isAuthenticated = true
+        } catch (error) {
+          console.error('Auth init error:', error)
           this.clearAuth()
         }
       }
-    }
-  }
+    },
+  },
 })

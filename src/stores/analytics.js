@@ -253,6 +253,10 @@ export const useAnalyticsStore = defineStore('analytics', {
       }
     },
 
+    async fetchDashboard(params = {}) {
+      return this.fetchDashboardStats(params)
+    },
+
     // ==================== PRODUCTION ====================
     
     async fetchProductionAnalytics(params = {}) {

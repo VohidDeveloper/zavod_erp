@@ -1,442 +1,454 @@
 import { defineStore } from 'pinia'
-import financeService from '@/services/financeService'
+import { ref } from 'vue'
 
-export const useFinanceStore = defineStore('finance', {
-  state: () => ({
-    // Transactions
-    transactions: [],
-    currentTransaction: null,
-    
-    // Payments
-    payments: [],
-    pendingPayments: [],
-    completedPayments: [],
-    
-    // Invoices
-    invoices: [],
-    unpaidInvoices: [],
-    
-    // Accounts
-    accounts: [],
-    
-    // Reports
-    reports: {
-      profitLoss: null,
-      cashFlow: null,
-      balance: null,
-      incomeStatement: null
+export const useFinanceStore = defineStore('finance', () => {
+  // State
+  const transactions = ref([])
+  const accounts = ref([])
+  const categories = ref([])
+  const stats = ref({
+    totalIncome: 0,
+    totalExpense: 0,
+    balance: 0,
+    thisMonthIncome: 0,
+    thisMonthExpense: 0,
+    profit: 0,
+    profitMargin: 0,
+    cashFlow: 0
+  })
+  
+  const loading = ref(false)
+  const error = ref(null)
+  
+  // Mock data
+  const mockTransactions = [
+    {
+      id: 1,
+      type: 'income',
+      amount: 5000000,
+      date: '2024-01-29',
+      category_id: 1,
+      category: { id: 1, name: 'Mahsulot sotish' },
+      account_id: 1,
+      account: { id: 1, name: 'Asosiy hisob - UZS' },
+      payment_method: 'transfer',
+      reference_number: 'INV-001',
+      counterparty: 'Plastik Savdo',
+      description: 'Plastik qoplar sotildi',
+      tags: ['savdo', 'mahsulot'],
+      status: 'completed',
+      created_at: '2024-01-29T10:00:00',
+      created_by: { name: 'Admin' }
     },
+    {
+      id: 2,
+      type: 'expense',
+      amount: 3500000,
+      date: '2024-01-28',
+      category_id: 5,
+      category: { id: 5, name: 'Xomashyo' },
+      account_id: 2,
+      account: { id: 2, name: 'Naqd pul - Kassa' },
+      payment_method: 'cash',
+      reference_number: 'PO-045',
+      counterparty: 'Polimerplast',
+      description: 'Plastik granula xarid qilindi',
+      tags: ['xomashyo', 'ishlab chiqarish'],
+      status: 'completed',
+      created_at: '2024-01-28T14:30:00',
+      created_by: { name: 'Manager' }
+    },
+    {
+      id: 3,
+      type: 'expense',
+      amount: 2000000,
+      date: '2024-01-27',
+      category_id: 6,
+      category: { id: 6, name: 'Ish haqi' },
+      account_id: 1,
+      account: { id: 1, name: 'Asosiy hisob - UZS' },
+      payment_method: 'transfer',
+      reference_number: 'SAL-JAN24',
+      counterparty: 'Xodimlar',
+      description: 'Yanvar oylik maoshi',
+      tags: ['ish haqi', 'xodimlar'],
+      status: 'completed',
+      created_at: '2024-01-27T09:00:00',
+      created_by: { name: 'Admin' }
+    }
+  ]
+  
+  const mockStats = {
+    totalIncome: 450000000,
+    totalExpense: 320000000,
+    balance: 130000000,
+    thisMonthIncome: 125000000,
+    thisMonthExpense: 85000000,
+    profit: 40000000,
+    profitMargin: 32,
+    cashFlow: 40000000,
+    incomeByCategory: [
+      { category: 'Mahsulot sotish', amount: 380000000, percentage: 84 },
+      { category: 'Xizmat ko\'rsatish', amount: 50000000, percentage: 11 },
+      { category: 'Boshqa kirimlar', amount: 20000000, percentage: 5 }
+    ],
+    expenseByCategory: [
+      { category: 'Xomashyo', amount: 150000000, percentage: 47 },
+      { category: 'Ish haqi', amount: 80000000, percentage: 25 },
+      { category: 'Kommunal', amount: 40000000, percentage: 13 },
+      { category: 'Boshqa', amount: 50000000, percentage: 15 }
+    ]
+  }
+  
+  const mockAccounts = [
+    { id: 1, name: 'Asosiy hisob - UZS', number: '****1234', balance: 85000000, currency: 'UZS' },
+    { id: 2, name: 'Naqd pul - Kassa', number: 'CASH', balance: 12000000, currency: 'UZS' },
+    { id: 3, name: 'Dollar hisobi - USD', number: '****5678', balance: 15000, currency: 'USD' },
+    { id: 4, name: 'Plastik karta', number: '****9012', balance: 8000000, currency: 'UZS' }
+  ]
+  
+  const mockCategories = [
+    // Income categories
+    { id: 1, name: 'Mahsulot sotish', type: 'income', icon: 'ShoppingBag' },
+    { id: 2, name: 'Xizmat ko\'rsatish', type: 'income', icon: 'Briefcase' },
+    { id: 3, name: 'Investitsiya', type: 'income', icon: 'TrendingUp' },
+    { id: 4, name: 'Boshqa kirimlar', type: 'income', icon: 'Plus' },
+    // Expense categories
+    { id: 5, name: 'Xomashyo', type: 'expense', icon: 'Package' },
+    { id: 6, name: 'Ish haqi', type: 'expense', icon: 'Users' },
+    { id: 7, name: 'Kommunal xizmatlar', type: 'expense', icon: 'Zap' },
+    { id: 8, name: 'Transport', type: 'expense', icon: 'Truck' },
+    { id: 9, name: 'Ofis xarajatlari', type: 'expense', icon: 'Home' },
+    { id: 10, name: 'Marketing', type: 'expense', icon: 'Megaphone' },
+    { id: 11, name: 'Soliq', type: 'expense', icon: 'FileText' },
+    { id: 12, name: 'Boshqa xarajatlar', type: 'expense', icon: 'MoreHorizontal' }
+  ]
+  
+  // Actions
+  
+  /**
+   * Fetch finance statistics
+   */
+  async function fetchStats() {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.get('/finance/stats')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      stats.value = mockStats
+      return stats.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Fetch transactions
+   */
+  async function fetchTransactions(params = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.get('/finance/transactions', { params })
+      await new Promise(resolve => setTimeout(resolve, 300))
+      transactions.value = mockTransactions
+      return transactions.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Create transaction
+   */
+  async function createTransaction(data) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.post('/finance/transactions', data)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const newTransaction = {
+        id: transactions.value.length + 1,
+        ...data,
+        status: 'completed',
+        created_at: new Date().toISOString(),
+        created_by: { name: 'Current User' }
+      }
+      
+      transactions.value.unshift(newTransaction)
+      
+      // Update stats
+      if (data.type === 'income') {
+        stats.value.totalIncome += data.amount
+        stats.value.thisMonthIncome += data.amount
+      } else {
+        stats.value.totalExpense += data.amount
+        stats.value.thisMonthExpense += data.amount
+      }
+      stats.value.balance = stats.value.totalIncome - stats.value.totalExpense
+      
+      return newTransaction
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Update transaction
+   */
+  async function updateTransaction(id, data) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.put(`/finance/transactions/${id}`, data)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = transactions.value.findIndex(t => t.id === id)
+      if (index > -1) {
+        const oldAmount = transactions.value[index].amount
+        const oldType = transactions.value[index].type
+        
+        transactions.value[index] = {
+          ...transactions.value[index],
+          ...data,
+          updated_at: new Date().toISOString(),
+          updated_by: { name: 'Current User' }
+        }
+        
+        // Update stats
+        if (oldType === 'income') {
+          stats.value.totalIncome -= oldAmount
+          stats.value.thisMonthIncome -= oldAmount
+        } else {
+          stats.value.totalExpense -= oldAmount
+          stats.value.thisMonthExpense -= oldAmount
+        }
+        
+        if (data.type === 'income') {
+          stats.value.totalIncome += data.amount
+          stats.value.thisMonthIncome += data.amount
+        } else {
+          stats.value.totalExpense += data.amount
+          stats.value.thisMonthExpense += data.amount
+        }
+        
+        stats.value.balance = stats.value.totalIncome - stats.value.totalExpense
+      }
+      
+      return transactions.value[index]
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Delete transaction
+   */
+  async function deleteTransaction(id) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // await api.delete(`/finance/transactions/${id}`)
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      const index = transactions.value.findIndex(t => t.id === id)
+      if (index > -1) {
+        const transaction = transactions.value[index]
+        
+        // Update stats
+        if (transaction.type === 'income') {
+          stats.value.totalIncome -= transaction.amount
+          stats.value.thisMonthIncome -= transaction.amount
+        } else {
+          stats.value.totalExpense -= transaction.amount
+          stats.value.thisMonthExpense -= transaction.amount
+        }
+        
+        stats.value.balance = stats.value.totalIncome - stats.value.totalExpense
+        
+        transactions.value.splice(index, 1)
+      }
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Fetch accounts
+   */
+  async function fetchAccounts() {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 300))
+      accounts.value = mockAccounts
+      return accounts.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Fetch categories
+   */
+  async function fetchCategories() {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 300))
+      categories.value = mockCategories
+      return categories.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Get transaction by ID
+   */
+  function getTransactionById(id) {
+    return transactions.value.find(t => t.id === id)
+  }
+  
+  /**
+   * Get account by ID
+   */
+  function getAccountById(id) {
+    return accounts.value.find(a => a.id === id)
+  }
+  
+  /**
+   * Get category by ID
+   */
+  function getCategoryById(id) {
+    return categories.value.find(c => c.id === id)
+  }
+  
+  /**
+   * Get income transactions
+   */
+  function getIncomeTransactions() {
+    return transactions.value.filter(t => t.type === 'income')
+  }
+  
+  /**
+   * Get expense transactions
+   */
+  function getExpenseTransactions() {
+    return transactions.value.filter(t => t.type === 'expense')
+  }
+  
+  /**
+   * Search transactions
+   */
+  function searchTransactions(query) {
+    if (!query) return transactions.value
     
-    // Statistics
-    stats: {
+    const lowerQuery = query.toLowerCase()
+    return transactions.value.filter(transaction => {
+      return transaction.description?.toLowerCase().includes(lowerQuery) ||
+             transaction.counterparty?.toLowerCase().includes(lowerQuery) ||
+             transaction.reference_number?.toLowerCase().includes(lowerQuery) ||
+             transaction.category?.name?.toLowerCase().includes(lowerQuery)
+    })
+  }
+  
+  /**
+   * Filter transactions by date range
+   */
+  function filterByDateRange(startDate, endDate) {
+    return transactions.value.filter(t => {
+      const date = new Date(t.date)
+      return date >= new Date(startDate) && date <= new Date(endDate)
+    })
+  }
+  
+  /**
+   * Filter transactions by category
+   */
+  function filterByCategory(categoryId) {
+    return transactions.value.filter(t => t.category_id === categoryId)
+  }
+  
+  /**
+   * Reset store
+   */
+  function reset() {
+    transactions.value = []
+    accounts.value = []
+    categories.value = []
+    stats.value = {
       totalIncome: 0,
       totalExpense: 0,
       balance: 0,
-      pendingPayments: 0,
-      overdueInvoices: 0
-    },
-    
-    // Date range for reports
-    reportDateRange: {
-      start: null,
-      end: null
-    },
-    
-    // Loading states
-    loading: false,
-    transactionsLoading: false,
-    paymentsLoading: false,
-    reportsLoading: false,
-    
-    error: null
-  }),
-
-  getters: {
-    // Transaction getters
-    incomeTransactions: (state) => state.transactions.filter(t => t.type === 'income'),
-    expenseTransactions: (state) => state.transactions.filter(t => t.type === 'expense'),
-    
-    totalIncome: (state) => {
-      return state.transactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + (t.amount || 0), 0)
-    },
-    
-    totalExpense: (state) => {
-      return state.transactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + (t.amount || 0), 0)
-    },
-    
-    balance: (state) => {
-      return state.transactions.reduce((sum, t) => {
-        return t.type === 'income' ? sum + t.amount : sum - t.amount
-      }, 0)
-    },
-    
-    // Payment getters
-    totalPendingPayments: (state) => {
-      return state.pendingPayments.reduce((sum, p) => sum + (p.amount || 0), 0)
-    },
-    
-    // Invoice getters
-    totalUnpaidInvoices: (state) => {
-      return state.unpaidInvoices.reduce((sum, i) => sum + (i.amount || 0), 0)
-    },
-    
-    overdueInvoices: (state) => {
-      const today = new Date()
-      return state.unpaidInvoices.filter(i => new Date(i.due_date) < today)
-    },
-    
-    // Account getters
-    totalAccountBalance: (state) => {
-      return state.accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
+      thisMonthIncome: 0,
+      thisMonthExpense: 0,
+      profit: 0,
+      profitMargin: 0,
+      cashFlow: 0
     }
-  },
-
-  actions: {
-    // ==================== TRANSACTIONS ====================
+    loading.value = false
+    error.value = null
+  }
+  
+  return {
+    // State
+    transactions,
+    accounts,
+    categories,
+    stats,
+    loading,
+    error,
     
-    async fetchTransactions(params = {}) {
-      this.transactionsLoading = true
-      this.error = null
-      try {
-        const response = await financeService.getTransactions(params)
-        this.transactions = response.data
-        this.updateStats()
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.transactionsLoading = false
-      }
-    },
-
-    async fetchTransaction(id) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.getTransaction(id)
-        this.currentTransaction = response.data
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async createTransaction(data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.createTransaction(data)
-        this.transactions.unshift(response.data)
-        this.updateStats()
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateTransaction(id, data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.updateTransaction(id, data)
-        const index = this.transactions.findIndex(t => t.id === id)
-        if (index !== -1) {
-          this.transactions[index] = response.data
-        }
-        this.updateStats()
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async deleteTransaction(id) {
-      this.loading = true
-      this.error = null
-      try {
-        await financeService.deleteTransaction(id)
-        this.transactions = this.transactions.filter(t => t.id !== id)
-        this.updateStats()
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // ==================== PAYMENTS ====================
+    // Actions
+    fetchStats,
+    fetchTransactions,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+    fetchAccounts,
+    fetchCategories,
     
-    async fetchPayments(params = {}) {
-      this.paymentsLoading = true
-      this.error = null
-      try {
-        const response = await financeService.getPayments(params)
-        this.payments = response.data
-        this.pendingPayments = response.data.filter(p => p.status === 'pending')
-        this.completedPayments = response.data.filter(p => p.status === 'completed')
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.paymentsLoading = false
-      }
-    },
-
-    async createPayment(data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.createPayment(data)
-        this.payments.unshift(response.data)
-        if (response.data.status === 'pending') {
-          this.pendingPayments.unshift(response.data)
-        }
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updatePayment(id, data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.updatePayment(id, data)
-        const index = this.payments.findIndex(p => p.id === id)
-        if (index !== -1) {
-          this.payments[index] = response.data
-        }
-        this.pendingPayments = this.payments.filter(p => p.status === 'pending')
-        this.completedPayments = this.payments.filter(p => p.status === 'completed')
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async confirmPayment(id) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.confirmPayment(id)
-        const index = this.payments.findIndex(p => p.id === id)
-        if (index !== -1) {
-          this.payments[index] = response.data
-        }
-        this.pendingPayments = this.payments.filter(p => p.status === 'pending')
-        this.completedPayments = this.payments.filter(p => p.status === 'completed')
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // ==================== INVOICES ====================
+    // Getters
+    getTransactionById,
+    getAccountById,
+    getCategoryById,
+    getIncomeTransactions,
+    getExpenseTransactions,
+    searchTransactions,
+    filterByDateRange,
+    filterByCategory,
     
-    async fetchInvoices(params = {}) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.getInvoices(params)
-        this.invoices = response.data
-        this.unpaidInvoices = response.data.filter(i => i.status === 'unpaid')
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async createInvoice(data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.createInvoice(data)
-        this.invoices.unshift(response.data)
-        if (response.data.status === 'unpaid') {
-          this.unpaidInvoices.unshift(response.data)
-        }
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateInvoice(id, data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.updateInvoice(id, data)
-        const index = this.invoices.findIndex(i => i.id === id)
-        if (index !== -1) {
-          this.invoices[index] = response.data
-        }
-        this.unpaidInvoices = this.invoices.filter(i => i.status === 'unpaid')
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // ==================== ACCOUNTS ====================
-    
-    async fetchAccounts() {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.getAccounts()
-        this.accounts = response.data
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateAccount(id, data) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await financeService.updateAccount(id, data)
-        const index = this.accounts.findIndex(a => a.id === id)
-        if (index !== -1) {
-          this.accounts[index] = response.data
-        }
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // ==================== REPORTS ====================
-    
-    async fetchProfitLossReport(params = {}) {
-      this.reportsLoading = true
-      this.error = null
-      try {
-        const response = await financeService.getProfitLossReport(params)
-        this.reports.profitLoss = response.data
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.reportsLoading = false
-      }
-    },
-
-    async fetchCashFlowReport(params = {}) {
-      this.reportsLoading = true
-      this.error = null
-      try {
-        const response = await financeService.getCashFlowReport(params)
-        this.reports.cashFlow = response.data
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.reportsLoading = false
-      }
-    },
-
-    async fetchBalanceReport(params = {}) {
-      this.reportsLoading = true
-      this.error = null
-      try {
-        const response = await financeService.getBalanceReport(params)
-        this.reports.balance = response.data
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.reportsLoading = false
-      }
-    },
-
-    async fetchIncomeStatement(params = {}) {
-      this.reportsLoading = true
-      this.error = null
-      try {
-        const response = await financeService.getIncomeStatement(params)
-        this.reports.incomeStatement = response.data
-        return response
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.reportsLoading = false
-      }
-    },
-
-    // ==================== STATISTICS ====================
-    
-    updateStats() {
-      this.stats = {
-        totalIncome: this.totalIncome,
-        totalExpense: this.totalExpense,
-        balance: this.balance,
-        pendingPayments: this.totalPendingPayments,
-        overdueInvoices: this.overdueInvoices.length
-      }
-    },
-
-    setReportDateRange(start, end) {
-      this.reportDateRange = { start, end }
-    },
-
     // Reset
-    reset() {
-      this.transactions = []
-      this.payments = []
-      this.invoices = []
-      this.accounts = []
-      this.reports = {
-        profitLoss: null,
-        cashFlow: null,
-        balance: null,
-        incomeStatement: null
-      }
-      this.error = null
-    }
+    reset
   }
 })

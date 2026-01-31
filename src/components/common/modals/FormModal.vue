@@ -1,81 +1,80 @@
 <template>
-    <BaseModal
-      :show="show"
-      :title="title"
-      :size="size"
-      @close="handleClose"
-    >
-      <form @submit.prevent="handleSubmit">
-        <slot :loading="loading" />
-        
-        <template #footer>
-          <div class="flex justify-end gap-3">
-            <BaseButton
-              type="button"
-              variant="outline"
-              @click="handleClose"
-              :disabled="loading"
-            >
-              {{ cancelText }}
-            </BaseButton>
-            
-            <BaseButton
-              type="submit"
-              variant="primary"
-              :loading="loading"
-            >
-              {{ submitText }}
-            </BaseButton>
-          </div>
-        </template>
-      </form>
-    </BaseModal>
-  </template>
-  
-  <script setup>
-  import { ref } from 'vue'
-  import BaseModal from './BaseModal.vue'
-  import BaseButton from './BaseButton.vue'
-  
-  const props = defineProps({
-    show: {
-      type: Boolean,
-      required: true
-    },
-    title: {
-      type: String,
-      required: true
-    },
-    size: {
-      type: String,
-      default: 'md'
-    },
-    submitText: {
-      type: String,
-      default: 'Saqlash'
-    },
-    cancelText: {
-      type: String,
-      default: 'Bekor qilish'
-    }
-  })
-  
-  const emit = defineEmits(['submit', 'close'])
-  
-  const loading = ref(false)
-  
-  const handleSubmit = async () => {
-    loading.value = true
-    try {
-      await emit('submit')
-    } finally {
-      loading.value = false
-    }
+  <Modal
+    v-model="isOpen"
+    :title="title"
+    :size="size"
+    @close="handleClose"
+  >
+    <form @submit.prevent="handleSubmit">
+      <slot />
+    </form>
+
+    <template #footer>
+      <div class="flex items-center justify-end space-x-3">
+        <button
+          type="button"
+          @click="handleClose"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          Bekor qilish
+        </button>
+        <button
+          type="button"
+          @click="handleSubmit"
+          :disabled="loading || disabled"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {{ loading ? 'Yuklanmoqda...' : submitText }}
+        </button>
+      </div>
+    </template>
+  </Modal>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import Modal from './Modal.vue'
+
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    default: false
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  submitText: {
+    type: String,
+    default: 'Saqlash'
+  },
+  size: {
+    type: String,
+    default: 'md'
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
   }
-  
-  const handleClose = () => {
-    if (!loading.value) {
-      emit('close')
-    }
-  }
-  </script>
+})
+
+const emit = defineEmits(['update:modelValue', 'submit', 'close'])
+
+const isOpen = computed({
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value)
+})
+
+const handleSubmit = () => {
+  emit('submit')
+}
+
+const handleClose = () => {
+  emit('close')
+  emit('update:modelValue', false)
+}
+</script>

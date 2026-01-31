@@ -1,26 +1,36 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
   },
   server: {
     port: 3000,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-    },
+        changeOrigin: true
+      }
+    }
   },
   build: {
     outDir: 'dist',
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
-  },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['vue', 'vue-router', 'pinia'],
+          'ui': ['@headlessui/vue', '@heroicons/vue'],
+          'charts': ['chart.js', 'vue-chartjs'],
+          'utils': ['axios', 'date-fns', 'lodash-es']
+        }
+      }
+    }
+  }
 })

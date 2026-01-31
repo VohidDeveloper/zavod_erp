@@ -32,7 +32,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           name: 'dashboard',
-          component: () => import('@/views/DashboardView.vue'),
+          component: () => import('@/views/dashboard/DashboardView.vue'),
           meta: {
             title: 'Bosh sahifa',
             requiresAuth: true
@@ -105,15 +105,15 @@ const router = createRouter({
         },
         
         // Profile
-        {
-          path: 'profile',
-          name: 'profile',
-          component: () => import('@/views/ProfileView.vue'),
-          meta: {
-            title: 'Profil',
-            requiresAuth: true
-          }
-        }
+        // {
+        //   path: 'profile',
+        //   name: 'profile',
+        //   component: () => import('@/views/ProfileView.vue'),
+        //   meta: {
+        //     title: 'Profil',
+        //     requiresAuth: true
+        //   }
+        // }
       ]
     },
     

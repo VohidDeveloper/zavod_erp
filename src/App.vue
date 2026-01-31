@@ -13,13 +13,16 @@ import { useAuthStore } from '@/stores/auth'
 const authStore = useAuthStore()
 
 onMounted(async () => {
-  // Check if user is already logged in
+  // Check if user is already authenticated
   const token = localStorage.getItem('access_token')
   if (token) {
     try {
       await authStore.fetchCurrentUser()
     } catch (error) {
-      console.error('Failed to fetch user:', error)
+      console.error('Failed to fetch current user:', error)
+      // Clear invalid token
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
     }
   }
 })

@@ -1,35 +1,57 @@
+// Tooltip directive
 export default {
     mounted(el, binding) {
       const tooltip = document.createElement('div')
-      tooltip.className = 'absolute z-50 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg opacity-0 transition-opacity duration-200 pointer-events-none'
       tooltip.textContent = binding.value
-      tooltip.setAttribute('data-tooltip', 'true')
+      tooltip.className = 'tooltip absolute z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-200'
+      tooltip.style.position = 'absolute'
+      tooltip.style.whiteSpace = 'nowrap'
       
       el.style.position = 'relative'
-      el.appendChild(tooltip)
       
-      el.addEventListener('mouseenter', () => {
-        tooltip.classList.remove('opacity-0')
-        tooltip.classList.add('opacity-100')
-      })
+      const showTooltip = () => {
+        document.body.appendChild(tooltip)
+        
+        const rect = el.getBoundingClientRect()
+        const tooltipRect = tooltip.getBoundingClientRect()
+        
+        // Position tooltip above element
+        tooltip.style.left = rect.left + (rect.width - tooltipRect.width) / 2 + 'px'
+        tooltip.style.top = rect.top - tooltipRect.height - 8 + window.scrollY + 'px'
+        
+        setTimeout(() => {
+          tooltip.style.opacity = '1'
+        }, 10)
+      }
       
-      el.addEventListener('mouseleave', () => {
-        tooltip.classList.remove('opacity-100')
-        tooltip.classList.add('opacity-0')
-      })
+      const hideTooltip = () => {
+        tooltip.style.opacity = '0'
+        setTimeout(() => {
+          if (tooltip.parentNode) {
+            tooltip.parentNode.removeChild(tooltip)
+          }
+        }, 200)
+      }
+      
+      el.addEventListener('mouseenter', showTooltip)
+      el.addEventListener('mouseleave', hideTooltip)
+      
+      el._tooltip = { tooltip, showTooltip, hideTooltip }
     },
     
     updated(el, binding) {
-      const tooltip = el.querySelector('[data-tooltip="true"]')
-      if (tooltip) {
-        tooltip.textContent = binding.value
+      if (el._tooltip && el._tooltip.tooltip) {
+        el._tooltip.tooltip.textContent = binding.value
       }
     },
     
     unmounted(el) {
-      const tooltip = el.querySelector('[data-tooltip="true"]')
-      if (tooltip) {
-        tooltip.remove()
+      if (el._tooltip) {
+        el.removeEventListener('mouseenter', el._tooltip.showTooltip)
+        el.removeEventListener('mouseleave', el._tooltip.hideTooltip)
+        if (el._tooltip.tooltip.parentNode) {
+          el._tooltip.tooltip.parentNode.removeChild(el._tooltip.tooltip)
+        }
       }
-    }
+    },
   }

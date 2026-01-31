@@ -1,296 +1,425 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
-export const useSalesStore = defineStore('sales', {
-  state: () => ({
-    customers: [],
-    orders: [],
-    products: [],
-    deliveries: [],
-    loading: false,
-    error: null
-  }),
-
-  getters: {
-    // Active customers
-    activeCustomers: (state) => {
-      return state.customers.filter(c => c.status === 'active')
+export const useSalesStore = defineStore('sales', () => {
+  // State
+  const customers = ref([])
+  const orders = ref([])
+  const invoices = ref([])
+  const stats = ref({
+    totalCustomers: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    activeCustomers: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    averageOrderValue: 0,
+    topCustomers: []
+  })
+  
+  const loading = ref(false)
+  const error = ref(null)
+  
+  // Mock data
+  const mockCustomers = [
+    {
+      id: 1,
+      type: 'company',
+      company_name: 'Plastik Savdo',
+      inn: '123456789',
+      oked: '12345',
+      phone: '+998 90 123-45-67',
+      email: 'info@plastiksavdo.uz',
+      region: 'Toshkent',
+      district: 'Yakkasaroy',
+      address: 'Amir Temur ko\'chasi, 15',
+      status: 'active',
+      total_orders: 45,
+      total_amount: 125000000,
+      debt: 5000000,
+      created_at: '2024-01-15T10:00:00',
+      created_by: { name: 'Admin' }
     },
-    
-    // Total customers
-    totalCustomers: (state) => state.customers.length,
-    
-    // Pending orders
-    pendingOrders: (state) => {
-      return state.orders.filter(o => o.status === 'pending')
+    {
+      id: 2,
+      type: 'individual',
+      first_name: 'Alisher',
+      last_name: 'Karimov',
+      phone: '+998 91 234-56-78',
+      email: 'alisher@example.com',
+      region: 'Samarqand',
+      district: 'Markaziy',
+      address: 'Registon ko\'chasi, 5',
+      status: 'active',
+      total_orders: 23,
+      total_amount: 45000000,
+      debt: 0,
+      created_at: '2024-01-20T14:30:00',
+      created_by: { name: 'Manager' }
     },
-    
-    // Completed orders
-    completedOrders: (state) => {
-      return state.orders.filter(o => o.status === 'completed')
-    },
-    
-    // Total sales
-    totalSales: (state) => {
-      return state.orders
-        .filter(o => o.status === 'completed')
-        .reduce((sum, o) => sum + o.totalAmount, 0)
-    },
-    
-    // Today's sales
-    todaySales: (state) => {
-      const today = new Date().toISOString().split('T')[0]
-      return state.orders
-        .filter(o => o.date === today)
-        .reduce((sum, o) => sum + o.totalAmount, 0)
-    },
-    
-    // Top customers
-    topCustomers: (state) => {
-      const customerSales = {}
-      
-      state.orders.forEach(order => {
-        if (!customerSales[order.customerId]) {
-          customerSales[order.customerId] = 0
-        }
-        customerSales[order.customerId] += order.totalAmount
-      })
-      
-      return Object.entries(customerSales)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([customerId, total]) => ({
-          customer: state.customers.find(c => c.id == customerId),
-          totalSales: total
-        }))
+    {
+      id: 3,
+      type: 'company',
+      company_name: 'Xorazm Plastmassa',
+      inn: '234567890',
+      oked: '23456',
+      phone: '+998 93 345-67-89',
+      email: 'info@xorplast.uz',
+      region: 'Xorazm',
+      district: 'Urganch',
+      address: 'Al-Xorazmiy ko\'chasi, 8',
+      status: 'active',
+      total_orders: 67,
+      total_amount: 230000000,
+      debt: 12000000,
+      created_at: '2024-01-10T09:15:00',
+      created_by: { name: 'Admin' }
     }
-  },
-
-  actions: {
-    // Customers
-    async fetchCustomers(params = {}) {
-      this.loading = true
-      this.error = null
-
-      try {
-        this.customers = [
-          {
-            id: 1,
-            name: 'Customer A',
-            phone: '+998901234567',
-            email: 'customer.a@example.com',
-            address: 'Tashkent, Uzbekistan',
-            status: 'active'
-          },
-          {
-            id: 2,
-            name: 'Customer B',
-            phone: '+998901234568',
-            email: 'customer.b@example.com',
-            address: 'Samarkand, Uzbekistan',
-            status: 'active'
-          }
-        ]
-        return this.customers
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async fetchCustomer(id) {
-      this.loading = true
-      try {
-        const customer = this.customers.find(c => c.id === id)
-        return customer
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async createCustomer(data) {
-      this.loading = true
-      try {
-        const customer = { id: Date.now(), status: 'active', ...data }
-        this.customers.push(customer)
-        return customer
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateCustomer(id, data) {
-      this.loading = true
-      try {
-        const index = this.customers.findIndex(c => c.id === id)
-        if (index !== -1) {
-          this.customers[index] = { ...this.customers[index], ...data }
-        }
-        return this.customers[index]
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async deleteCustomer(id) {
-      this.loading = true
-      try {
-        const index = this.customers.findIndex(c => c.id === id)
-        if (index !== -1) {
-          this.customers.splice(index, 1)
-        }
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Orders
-    async fetchOrders(params = {}) {
-      this.loading = true
-      try {
-        this.orders = [
-          {
-            id: 1,
-            orderNo: 'ORD-001',
-            date: '2024-01-23',
-            customerId: 1,
-            customerName: 'Customer A',
-            totalAmount: 5000000,
-            status: 'pending'
-          },
-          {
-            id: 2,
-            orderNo: 'ORD-002',
-            date: '2024-01-22',
-            customerId: 2,
-            customerName: 'Customer B',
-            totalAmount: 3000000,
-            status: 'completed'
-          }
-        ]
-        return this.orders
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async fetchOrder(id) {
-      this.loading = true
-      try {
-        const order = this.orders.find(o => o.id === id)
-        return order
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async createOrder(data) {
-      this.loading = true
-      try {
-        const order = {
-          id: Date.now(),
-          orderNo: `ORD-${Date.now()}`,
-          date: new Date().toISOString().split('T')[0],
-          status: 'pending',
-          ...data
-        }
-        this.orders.unshift(order)
-        return order
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateOrder(id, data) {
-      this.loading = true
-      try {
-        const index = this.orders.findIndex(o => o.id === id)
-        if (index !== -1) {
-          this.orders[index] = { ...this.orders[index], ...data }
-        }
-        return this.orders[index]
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async deleteOrder(id) {
-      this.loading = true
-      try {
-        const index = this.orders.findIndex(o => o.id === id)
-        if (index !== -1) {
-          this.orders.splice(index, 1)
-        }
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Products
-    async fetchProducts(params = {}) {
-      this.loading = true
-      try {
-        this.products = [
-          { id: 1, name: 'Product A', price: 50000, unit: 'dona', stock: 1000 },
-          { id: 2, name: 'Product B', price: 45000, unit: 'dona', stock: 800 }
-        ]
-        return this.products
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Deliveries
-    async fetchDeliveries(params = {}) {
-      this.loading = true
-      try {
-        this.deliveries = [
-          {
-            id: 1,
-            deliveryNo: 'DEL-001',
-            orderId: 1,
-            date: '2024-01-24',
-            status: 'scheduled'
-          }
-        ]
-        return this.deliveries
-      } catch (error) {
-        this.error = error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
+  ]
+  
+  const mockStats = {
+    totalCustomers: 156,
+    totalOrders: 845,
+    totalRevenue: 3450000000,
+    activeCustomers: 142,
+    pendingOrders: 23,
+    completedOrders: 789,
+    cancelledOrders: 33,
+    averageOrderValue: 4083431,
+    topCustomers: [
+      { id: 3, name: 'Xorazm Plastmassa', orders: 67, revenue: 230000000 },
+      { id: 1, name: 'Plastik Savdo', orders: 45, revenue: 125000000 },
+      { id: 2, name: 'Alisher Karimov', orders: 23, revenue: 45000000 }
+    ]
+  }
+  
+  const mockOrders = [
+    {
+      id: 1,
+      order_number: 'ORD-001',
+      customer_id: 1,
+      customer: { name: 'Plastik Savdo', type: 'company' },
+      order_date: '2024-01-29',
+      status: 'pending',
+      total_amount: 5000000,
+      paid_amount: 0,
+      items_count: 3
     }
+  ]
+  
+  // Actions
+  
+  /**
+   * Fetch sales statistics
+   */
+  async function fetchStats() {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.get('/sales/stats')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      stats.value = mockStats
+      return stats.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Fetch customers
+   */
+  async function fetchCustomers(params = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.get('/sales/customers', { params })
+      await new Promise(resolve => setTimeout(resolve, 300))
+      customers.value = mockCustomers
+      return customers.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Create customer
+   */
+  async function createCustomer(data) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.post('/sales/customers', data)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const newCustomer = {
+        id: customers.value.length + 1,
+        ...data,
+        status: 'active',
+        total_orders: 0,
+        total_amount: 0,
+        debt: 0,
+        created_at: new Date().toISOString(),
+        created_by: { name: 'Current User' }
+      }
+      
+      customers.value.unshift(newCustomer)
+      return newCustomer
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Update customer
+   */
+  async function updateCustomer(id, data) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // const response = await api.put(`/sales/customers/${id}`, data)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = customers.value.findIndex(c => c.id === id)
+      if (index > -1) {
+        customers.value[index] = {
+          ...customers.value[index],
+          ...data,
+          updated_at: new Date().toISOString(),
+          updated_by: { name: 'Current User' }
+        }
+      }
+      
+      return customers.value[index]
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Delete customer
+   */
+  async function deleteCustomer(id) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      // await api.delete(`/sales/customers/${id}`)
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      const index = customers.value.findIndex(c => c.id === id)
+      if (index > -1) {
+        customers.value.splice(index, 1)
+      }
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Fetch orders
+   */
+  async function fetchOrders(params = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 300))
+      orders.value = mockOrders
+      return orders.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Create order
+   */
+  async function createOrder(data) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const newOrder = {
+        id: orders.value.length + 1,
+        order_number: `ORD-${String(orders.value.length + 1).padStart(3, '0')}`,
+        ...data,
+        order_date: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString()
+      }
+      
+      orders.value.unshift(newOrder)
+      return newOrder
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Update order
+   */
+  async function updateOrder(id, data) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = orders.value.findIndex(o => o.id === id)
+      if (index > -1) {
+        orders.value[index] = {
+          ...orders.value[index],
+          ...data,
+          updated_at: new Date().toISOString()
+        }
+      }
+      
+      return orders.value[index]
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Delete order
+   */
+  async function deleteOrder(id) {
+    loading.value = true
+    error.value = null
+    try {
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      const index = orders.value.findIndex(o => o.id === id)
+      if (index > -1) {
+        orders.value.splice(index, 1)
+      }
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  /**
+   * Get customer by ID
+   */
+  function getCustomerById(id) {
+    return customers.value.find(c => c.id === id)
+  }
+  
+  /**
+   * Get order by ID
+   */
+  function getOrderById(id) {
+    return orders.value.find(o => o.id === id)
+  }
+  
+  /**
+   * Get customer orders
+   */
+  function getCustomerOrders(customerId) {
+    return orders.value.filter(o => o.customer_id === customerId)
+  }
+  
+  /**
+   * Search customers
+   */
+  function searchCustomers(query) {
+    if (!query) return customers.value
+    
+    const lowerQuery = query.toLowerCase()
+    return customers.value.filter(customer => {
+      if (customer.type === 'company') {
+        return customer.company_name?.toLowerCase().includes(lowerQuery) ||
+               customer.inn?.includes(query) ||
+               customer.phone?.includes(query)
+      } else {
+        return customer.first_name?.toLowerCase().includes(lowerQuery) ||
+               customer.last_name?.toLowerCase().includes(lowerQuery) ||
+               customer.phone?.includes(query)
+      }
+    })
+  }
+  
+  /**
+   * Reset store
+   */
+  function reset() {
+    customers.value = []
+    orders.value = []
+    invoices.value = []
+    stats.value = {
+      totalCustomers: 0,
+      totalOrders: 0,
+      totalRevenue: 0,
+      activeCustomers: 0,
+      pendingOrders: 0,
+      completedOrders: 0,
+      averageOrderValue: 0,
+      topCustomers: []
+    }
+    loading.value = false
+    error.value = null
+  }
+  
+  return {
+    // State
+    customers,
+    orders,
+    invoices,
+    stats,
+    loading,
+    error,
+    
+    // Actions
+    fetchStats,
+    fetchCustomers,
+    createCustomer,
+    updateCustomer,
+    deleteCustomer,
+    fetchOrders,
+    createOrder,
+    updateOrder,
+    deleteOrder,
+    
+    // Getters
+    getCustomerById,
+    getOrderById,
+    getCustomerOrders,
+    searchCustomers,
+    
+    // Reset
+    reset
   }
 })

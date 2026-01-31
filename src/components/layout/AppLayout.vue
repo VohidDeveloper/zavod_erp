@@ -40,10 +40,10 @@
   
   <script setup>
   import { ref, onMounted } from 'vue'
-  import Sidebar from './Sidebar.vue'
-  import Navbar from './Navbar.vue'
+  import Sidebar from './sidebar/Sidebar.vue'
+  import Navbar from './header/Navbar.vue'
   import Breadcrumb from './Breadcrumb.vue'
-  import Footer from './Footer.vue'
+  import Footer from './footer/Footer.vue'
   import { NotificationContainer, ToastContainer } from '@/components/common'
   
   const sidebarCollapsed = ref(false)

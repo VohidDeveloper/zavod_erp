@@ -1,4 +1,4 @@
-export { default as api, apiClient } from './api'
+export { default as api } from './api'
 export { default as authService } from './authService'
 export { default as warehouseService } from './warehouseService'
 export { default as productionService } from './productionService'

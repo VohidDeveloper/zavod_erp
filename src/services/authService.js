@@ -1,55 +1,90 @@
-import { apiClient } from './api'
+import api from '@/utils/api'
 
-const authService = {
-  // Login
-  login(credentials) {
-    return apiClient.post('/auth/login', credentials)
+export const authService = {
+  /**
+   * Login user
+   * FastAPI expects: { username, password }
+   * @param {Object} credentials - { email, password } or { username, password }
+   */
+  async login(credentials) {
+    // Backend expects 'username', not 'email'
+    const loginData = {
+      username: credentials.username || credentials.email,
+      password: credentials.password
+    }
+    
+    const response = await api.post('/auth/login', loginData)
+    return response.data
   },
 
-  // Logout
-  logout() {
-    return apiClient.post('/auth/logout')
+  /**
+   * Logout user
+   */
+  async logout() {
+    try {
+      await api.post('/auth/logout')
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Clear local storage
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+    }
   },
 
-  // Register
-  register(data) {
-    return apiClient.post('/auth/register', data)
+  /**
+   * Get current user
+   */
+  async getCurrentUser() {
+    const response = await api.get('/auth/me')
+    return response.data
   },
 
-  // Get current user
-  me() {
-    return apiClient.get('/auth/me')
+  /**
+   * Refresh access token
+   * @param {string} refreshToken
+   */
+  async refreshToken(refreshToken) {
+    const response = await api.post('/auth/refresh', {
+      refresh_token: refreshToken
+    })
+    return response.data
   },
 
-  // Refresh token
-  refresh() {
-    return apiClient.post('/auth/refresh')
+  /**
+   * Register new user
+   * @param {Object} userData
+   */
+  async register(userData) {
+    const response = await api.post('/auth/register', userData)
+    return response.data
   },
 
-  // Change password
-  changePassword(data) {
-    return apiClient.post('/auth/change-password', data)
+  /**
+   * Change password
+   * @param {Object} data - { old_password, new_password }
+   */
+  async changePassword(data) {
+    const response = await api.post('/auth/change-password', data)
+    return response.data
   },
 
-  // Forgot password
-  forgotPassword(email) {
-    return apiClient.post('/auth/forgot-password', { email })
+  /**
+   * Request password reset
+   * @param {string} email
+   */
+  async requestPasswordReset(email) {
+    const response = await api.post('/auth/forgot-password', { email })
+    return response.data
   },
 
-  // Reset password
-  resetPassword(data) {
-    return apiClient.post('/auth/reset-password', data)
-  },
-
-  // Verify email
-  verifyEmail(token) {
-    return apiClient.post('/auth/verify-email', { token })
-  },
-
-  // Resend verification email
-  resendVerification(email) {
-    return apiClient.post('/auth/resend-verification', { email })
+  /**
+   * Reset password with token
+   * @param {Object} data - { token, new_password }
+   */
+  async resetPassword(data) {
+    const response = await api.post('/auth/reset-password', data)
+    return response.data
   }
 }
-
-export default authService

@@ -1,331 +1,392 @@
 <template>
-    <div v-if="loading" class="flex items-center justify-center min-h-screen">
-      <svg class="animate-spin h-12 w-12 text-primary-600" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <button
+          @click="$router.back()"
+          class="p-2 hover:bg-gray-100 rounded-lg transition"
+        >
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Xodim ma'lumotlari</h1>
+          <p class="text-gray-600 mt-1">To'liq ma'lumot va tarix</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button
+          @click="editEmployee"
+          class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          Tahrirlash
+        </button>
+        <button
+          @click="confirmDelete"
+          class="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50"
+        >
+          O'chirish
+        </button>
+      </div>
     </div>
-  
-    <div v-else-if="!employee" class="text-center py-12">
-      <p class="text-gray-500">Xodim topilmadi</p>
-      <button @click="$router.back()" class="mt-4 btn-primary">Orqaga</button>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
-  
-    <div v-else class="space-y-6">
-      <!-- Header -->
-      <div class="flex justify-between items-center">
-        <div class="flex items-center gap-4">
-          <button
-            @click="$router.back()"
-            class="text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-            <span class="text-primary-600 font-bold text-2xl">
-              {{ getInitials(employee) }}
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <p class="text-red-800">{{ error }}</p>
+      <button @click="fetchEmployee" class="mt-2 text-sm text-red-600 hover:text-red-700">
+        Qayta urinish
+      </button>
+    </div>
+
+    <!-- Content -->
+    <template v-else-if="employee">
+      <!-- Profile Card -->
+      <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-8 text-white">
+        <div class="flex items-center space-x-6">
+          <div class="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+            <span class="text-4xl font-bold">
+              {{ employee.first_name.charAt(0) }}{{ employee.last_name.charAt(0) }}
             </span>
           </div>
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">
-              {{ employee.first_name }} {{ employee.last_name }}
-            </h1>
-            <p class="text-gray-600 mt-1">{{ employee.position }} - {{ formatDepartment(employee.department) }}</p>
+          <div class="flex-1">
+            <h2 class="text-3xl font-bold">{{ employee.first_name }} {{ employee.last_name }}</h2>
+            <p class="text-blue-100 mt-1">{{ employee.position }}</p>
+            <div class="flex items-center space-x-4 mt-3">
+              <span class="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm">
+                {{ employee.department?.name || 'N/A' }}
+              </span>
+              <span 
+                class="px-3 py-1 rounded-full text-sm"
+                :class="getStatusBadgeClass(employee.employment_status)"
+              >
+                {{ getStatusText(employee.employment_status) }}
+              </span>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-blue-100 text-sm">Ish haqi</p>
+            <p class="text-3xl font-bold">{{ formatCurrency(employee.salary) }}</p>
           </div>
         </div>
-        <div class="flex gap-2">
-          <button
-            v-if="can('UPDATE_EMPLOYEE')"
-            @click="editEmployee"
-            class="btn-primary flex items-center gap-2"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Tahrirlash
-          </button>
-        </div>
       </div>
-  
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Column - Main Info -->
+        <!-- Main Info -->
         <div class="lg:col-span-2 space-y-6">
           <!-- Personal Information -->
-          <div class="bg-white rounded-lg shadow">
-            <div class="p-6 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Shaxsiy ma'lumotlar</h3>
-            </div>
-            <div class="p-6">
-              <div class="grid grid-cols-2 gap-6">
-                <div>
-                  <p class="text-sm text-gray-500">Ism</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">{{ employee.first_name }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Familiya</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">{{ employee.last_name }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Tug'ilgan sana</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">
-                    {{ formatDate(employee.birth_date) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Jinsi</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">
-                    {{ employee.gender === 'male' ? 'Erkak' : 'Ayol' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Passport</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">{{ employee.passport_number }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Manzil</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">{{ employee.address }}</p>
-                </div>
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Shaxsiy ma'lumotlar</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-sm text-gray-600">Telefon</p>
+                <p class="font-medium text-gray-900">{{ employee.phone }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Email</p>
+                <p class="font-medium text-gray-900">{{ employee.email || 'N/A' }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Pasport seriyasi</p>
+                <p class="font-medium text-gray-900">{{ employee.passport_serial || 'N/A' }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">INN</p>
+                <p class="font-medium text-gray-900">{{ employee.inn || 'N/A' }}</p>
+              </div>
+              <div class="col-span-2">
+                <p class="text-sm text-gray-600">Manzil</p>
+                <p class="font-medium text-gray-900">{{ employee.address || 'N/A' }}</p>
               </div>
             </div>
           </div>
-  
+
           <!-- Employment Information -->
-          <div class="bg-white rounded-lg shadow">
-            <div class="p-6 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Ish ma'lumotlari</h3>
-            </div>
-            <div class="p-6">
-              <div class="grid grid-cols-2 gap-6">
-                <div>
-                  <p class="text-sm text-gray-500">Xodim ID</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">{{ employee.employee_id }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Bo'lim</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">
-                    {{ formatDepartment(employee.department) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Lavozim</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">{{ employee.position }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Ish boshlagan sana</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">
-                    {{ formatDate(employee.hire_date) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Ish staji</p>
-                  <p class="mt-1 text-base font-medium text-gray-900">
-                    {{ calculateWorkExperience(employee.hire_date) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Holat</p>
-                  <span
-                    class="mt-1 inline-block px-2 py-1 text-xs font-medium rounded-full"
-                    :class="getStatusClass(employee.status)"
-                  >
-                    {{ formatStatus(employee.status) }}
-                  </span>
-                </div>
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Ish ma'lumotlari</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-sm text-gray-600">Lavozim</p>
+                <p class="font-medium text-gray-900">{{ employee.position }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Bo'lim</p>
+                <p class="font-medium text-gray-900">{{ employee.department?.name || 'N/A' }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Ishga qabul qilingan</p>
+                <p class="font-medium text-gray-900">{{ formatDate(employee.hire_date) }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Ish haqi</p>
+                <p class="font-medium text-gray-900">{{ formatCurrency(employee.salary) }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Holati</p>
+                <span 
+                  class="inline-block px-2 py-1 text-xs font-medium rounded-full"
+                  :class="getStatusClass(employee.employment_status)"
+                >
+                  {{ getStatusText(employee.employment_status) }}
+                </span>
               </div>
             </div>
           </div>
-  
-          <!-- Salary History -->
-          <div class="bg-white rounded-lg shadow">
-            <div class="p-6 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Maosh tarixi</h3>
+
+          <!-- Attendance History -->
+          <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">Davomat tarixi</h3>
+              <button
+                @click="viewFullAttendance"
+                class="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Barchasi
+              </button>
             </div>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sana</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Summa</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Izoh</th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="history in salaryHistory" :key="history.id" class="hover:bg-gray-50">
-                    <td class="px-6 py-4 text-sm text-gray-900">{{ formatDate(history.date) }}</td>
-                    <td class="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                      {{ formatCurrency(history.amount) }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-600">{{ history.note }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="space-y-2">
+              <div
+                v-for="attendance in recentAttendance"
+                :key="attendance.id"
+                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
+                <div>
+                  <p class="font-medium text-gray-900">{{ formatDate(attendance.attendance_date) }}</p>
+                  <p class="text-sm text-gray-600">
+                    {{ attendance.check_in_time ? formatTime(attendance.check_in_time) : '-' }} - 
+                    {{ attendance.check_out_time ? formatTime(attendance.check_out_time) : '-' }}
+                  </p>
+                </div>
+                <span 
+                  class="px-2 py-1 text-xs font-medium rounded-full"
+                  :class="getAttendanceStatusClass(attendance.status)"
+                >
+                  {{ getAttendanceStatusText(attendance.status) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Salary Payment History -->
+          <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">Ish haqi to'lovlari tarixi</h3>
+              <button
+                @click="$router.push({ name: 'hr-salaries', query: { employee: employee.id } })"
+                class="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Barchasi
+              </button>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="payment in recentPayments"
+                :key="payment.id"
+                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
+                <div>
+                  <p class="font-medium text-gray-900">{{ formatDate(payment.payment_date) }}</p>
+                  <p class="text-sm text-gray-600">
+                    {{ formatDate(payment.period_start) }} - {{ formatDate(payment.period_end) }}
+                  </p>
+                </div>
+                <p class="font-bold text-green-600">{{ formatCurrency(payment.total_amount) }}</p>
+              </div>
             </div>
           </div>
         </div>
-  
-        <!-- Right Column - Sidebar -->
+
+        <!-- Sidebar -->
         <div class="space-y-6">
-          <!-- Contact Card -->
-          <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Aloqa</h3>
-            <div class="space-y-3">
-              <div class="flex items-center gap-3">
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <span class="text-sm text-gray-900">{{ formatPhone(employee.phone) }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span class="text-sm text-gray-900">{{ employee.email }}</span>
-              </div>
-            </div>
-          </div>
-  
-          <!-- Salary Card -->
-          <div class="bg-gradient-to-br from-success-500 to-success-600 rounded-lg shadow-lg p-6 text-white">
-            <p class="text-success-100 text-sm">Joriy maosh</p>
-            <p class="text-3xl font-bold mt-2">{{ formatCurrency(employee.salary) }}</p>
-            <p class="text-success-100 text-sm mt-4">Oylik to'lov</p>
-          </div>
-  
           <!-- Quick Stats -->
           <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Statistika</h3>
+            <h3 class="text-lg font-semibold mb-4">Statistika</h3>
             <div class="space-y-4">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Bu oy ish kunlari</span>
-                <span class="text-base font-semibold text-gray-900">22</span>
+              <div class="p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm text-blue-600">Ish kunlari</p>
+                <p class="text-2xl font-bold text-blue-700">
+                  {{ calculateWorkDays(employee.hire_date) }}
+                </p>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Qatnashgan</span>
-                <span class="text-base font-semibold text-success-600">20</span>
+              <div class="p-4 bg-green-50 rounded-lg">
+                <p class="text-sm text-green-600">Bu oy davomat</p>
+                <p class="text-2xl font-bold text-green-700">95%</p>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Kechikish</span>
-                <span class="text-base font-semibold text-warning-600">2</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Yo'qlamalar</span>
-                <span class="text-base font-semibold text-danger-600">0</span>
+              <div class="p-4 bg-purple-50 rounded-lg">
+                <p class="text-sm text-purple-600">Ta'til qoldig'i</p>
+                <p class="text-2xl font-bold text-purple-700">12 kun</p>
               </div>
             </div>
           </div>
-  
-          <!-- Emergency Contact -->
-          <div v-if="employee.emergency_contact" class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Favqulodda aloqa</h3>
-            <div class="space-y-3">
-              <div>
-                <p class="text-sm text-gray-500">Ism</p>
-                <p class="mt-1 text-base font-medium text-gray-900">
-                  {{ employee.emergency_contact.name }}
-                </p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">Telefon</p>
-                <p class="mt-1 text-base font-medium text-gray-900">
-                  {{ formatPhone(employee.emergency_contact.phone) }}
-                </p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">Qarindoshlik</p>
-                <p class="mt-1 text-base font-medium text-gray-900">
-                  {{ employee.emergency_contact.relationship }}
-                </p>
-              </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Tezkor harakatlar</h3>
+            <div class="space-y-2">
+              <button
+                @click="$router.push({ name: 'hr-attendance', query: { employee: employee.id } })"
+                class="w-full px-4 py-2 text-left text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Davomat yozish
+              </button>
+              <button
+                @click="$router.push({ name: 'hr-salary-calculate', query: { employee: employee.id } })"
+                class="w-full px-4 py-2 text-left text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Ish haqi hisoblash
+              </button>
+              <button
+                @click="$router.push({ name: 'hr-leave', query: { employee: employee.id } })"
+                class="w-full px-4 py-2 text-left text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Ta'til so'rovi
+              </button>
             </div>
+          </div>
+
+          <!-- Information -->
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Ma'lumot</h3>
+            <dl class="space-y-3 text-sm">
+              <div>
+                <dt class="text-gray-600">Yaratilgan:</dt>
+                <dd class="font-medium text-gray-900">{{ formatDate(employee.created_at) }}</dd>
+              </div>
+              <div v-if="employee.updated_at">
+                <dt class="text-gray-600">Yangilangan:</dt>
+                <dd class="font-medium text-gray-900">{{ formatDate(employee.updated_at) }}</dd>
+              </div>
+            </dl>
           </div>
         </div>
       </div>
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
-  import { useHRStore } from '@/stores/hr'
-  import { usePermissions } from '@/composables/usePermissions'
-  import { useNotifications } from '@/composables/useNotifications'
-  import {
-    formatCurrency,
-    formatDate,
-    formatPhone,
-    formatStatus,
-  } from '@/utils/formatters'
-  
-  const route = useRoute()
-  const router = useRouter()
-  const hrStore = useHRStore()
-  const { can } = usePermissions()
-  const notifications = useNotifications()
-  
-  const employee = ref(null)
-  const salaryHistory = ref([])
-  const loading = ref(true)
-  
-  onMounted(async () => {
-    await fetchEmployee()
-  })
-  
-  async function fetchEmployee() {
-    loading.value = true
-    try {
-      const id = route.params.id
-      employee.value = await hrStore.getEmployee(id)
-      salaryHistory.value = employee.value.salary_history || []
-    } catch (error) {
-      notifications.apiError(error)
-    } finally {
-      loading.value = false
-    }
+    </template>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useHRStore } from '@/stores/hr'
+import { formatCurrency, formatDate } from '@/utils/formatters'
+
+const route = useRoute()
+const router = useRouter()
+const hrStore = useHRStore()
+
+const recentAttendance = ref([])
+const recentPayments = ref([])
+
+const loading = computed(() => hrStore.loading)
+const error = computed(() => hrStore.error?.detail || hrStore.error?.message || null)
+const employee = computed(() => hrStore.currentEmployee)
+
+async function fetchEmployee() {
+  try {
+    await hrStore.fetchEmployee(route.params.id)
+    await loadRecentData()
+  } catch (err) {
+    console.error('Failed to fetch employee:', err)
   }
-  
-  function getInitials(emp) {
-    const first = emp.first_name?.charAt(0) || ''
-    const last = emp.last_name?.charAt(0) || ''
-    return (first + last).toUpperCase() || 'X'
+}
+
+async function loadRecentData() {
+  try {
+    const [attendance, payments] = await Promise.all([
+      hrStore.fetchEmployeeAttendance(route.params.id, { limit: 5 }),
+      hrStore.fetchEmployeeSalaryPayments(route.params.id, { limit: 5 })
+    ])
+    recentAttendance.value = attendance.slice(0, 5)
+    recentPayments.value = payments.slice(0, 5)
+  } catch (err) {
+    console.error('Failed to load recent data:', err)
   }
-  
-  function formatDepartment(dept) {
-    const departments = {
-      production: 'Ishlab chiqarish',
-      sales: 'Savdo',
-      warehouse: 'Ombor',
-      finance: 'Moliya',
-      hr: 'HR',
-    }
-    return departments[dept] || dept
+}
+
+function getStatusClass(status) {
+  const classes = {
+    active: 'bg-green-100 text-green-800',
+    on_leave: 'bg-orange-100 text-orange-800',
+    terminated: 'bg-red-100 text-red-800'
   }
-  
-  function getStatusClass(status) {
-    const classes = {
-      active: 'bg-success-100 text-success-800',
-      inactive: 'bg-gray-100 text-gray-800',
-      on_leave: 'bg-warning-100 text-warning-800',
-    }
-    return classes[status] || 'bg-gray-100 text-gray-800'
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+function getStatusBadgeClass(status) {
+  const classes = {
+    active: 'bg-green-500 text-white',
+    on_leave: 'bg-orange-500 text-white',
+    terminated: 'bg-red-500 text-white'
   }
-  
-  function calculateWorkExperience(hireDate) {
-    const now = new Date()
-    const hire = new Date(hireDate)
-    const diffTime = Math.abs(now - hire)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    const years = Math.floor(diffDays / 365)
-    const months = Math.floor((diffDays % 365) / 30)
-    
-    if (years > 0) {
-      return `${years} yil ${months} oy`
-    }
-    return `${months} oy`
+  return classes[status] || 'bg-gray-500 text-white'
+}
+
+function getStatusText(status) {
+  const texts = {
+    active: 'Faol',
+    on_leave: 'Ta\'tilda',
+    terminated: 'Ishdan bo\'shatilgan'
   }
-  
-  function editEmployee() {
-    router.push(`/hr/employees/${employee.value.id}/edit`)
+  return texts[status] || status
+}
+
+function getAttendanceStatusClass(status) {
+  const classes = {
+    present: 'bg-green-100 text-green-800',
+    absent: 'bg-red-100 text-red-800',
+    late: 'bg-orange-100 text-orange-800',
+    half_day: 'bg-yellow-100 text-yellow-800',
+    on_leave: 'bg-blue-100 text-blue-800'
   }
-  </script>
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+function getAttendanceStatusText(status) {
+  const texts = {
+    present: 'Keldi',
+    absent: 'Kelmadi',
+    late: 'Kech qoldi',
+    half_day: 'Yarim kun',
+    on_leave: 'Ta\'tilda'
+  }
+  return texts[status] || status
+}
+
+function formatTime(datetime) {
+  return new Date(datetime).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })
+}
+
+function calculateWorkDays(hireDate) {
+  const days = Math.floor((new Date() - new Date(hireDate)) / (1000 * 60 * 60 * 24))
+  return days
+}
+
+function editEmployee() {
+  router.push(`/hr/employees/${route.params.id}/edit`)
+}
+
+function viewFullAttendance() {
+  router.push({ name: 'hr-attendance', query: { employee: route.params.id } })
+}
+
+async function confirmDelete() {
+  if (!confirm('Xodimni o\'chirishga ishonchingiz komilmi?')) return
+
+  try {
+    await hrStore.deleteEmployee(route.params.id)
+    router.push({ name: 'hr-employees' })
+  } catch (err) {
+    console.error('Failed to delete employee:', err)
+  }
+}
+
+onMounted(() => {
+  fetchEmployee()
+})
+</script>

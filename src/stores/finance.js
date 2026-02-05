@@ -1,454 +1,391 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import financeService from '@/services/financeService'
 
 export const useFinanceStore = defineStore('finance', () => {
-  // State
-  const transactions = ref([])
-  const accounts = ref([])
-  const categories = ref([])
-  const stats = ref({
-    totalIncome: 0,
-    totalExpense: 0,
-    balance: 0,
-    thisMonthIncome: 0,
-    thisMonthExpense: 0,
-    profit: 0,
-    profitMargin: 0,
-    cashFlow: 0
-  })
+  // ============ STATE ============
   
+  // Categories
+  const categories = ref([])
+  const incomeCategories = ref([])
+  const expenseCategories = ref([])
+  const currentCategory = ref(null)
+  
+  // Transactions
+  const transactions = ref([])
+  const currentTransaction = ref(null)
+  
+  // Reports
+  const profitAndLoss = ref(null)
+  const cashFlow = ref(null)
+  const balanceSheet = ref(null)
+  
+  // Statistics
+  const statistics = ref(null)
+  
+  // UI State
   const loading = ref(false)
   const error = ref(null)
+
+  // ============ GETTERS ============
   
-  // Mock data
-  const mockTransactions = [
-    {
-      id: 1,
-      type: 'income',
-      amount: 5000000,
-      date: '2024-01-29',
-      category_id: 1,
-      category: { id: 1, name: 'Mahsulot sotish' },
-      account_id: 1,
-      account: { id: 1, name: 'Asosiy hisob - UZS' },
-      payment_method: 'transfer',
-      reference_number: 'INV-001',
-      counterparty: 'Plastik Savdo',
-      description: 'Plastik qoplar sotildi',
-      tags: ['savdo', 'mahsulot'],
-      status: 'completed',
-      created_at: '2024-01-29T10:00:00',
-      created_by: { name: 'Admin' }
-    },
-    {
-      id: 2,
-      type: 'expense',
-      amount: 3500000,
-      date: '2024-01-28',
-      category_id: 5,
-      category: { id: 5, name: 'Xomashyo' },
-      account_id: 2,
-      account: { id: 2, name: 'Naqd pul - Kassa' },
-      payment_method: 'cash',
-      reference_number: 'PO-045',
-      counterparty: 'Polimerplast',
-      description: 'Plastik granula xarid qilindi',
-      tags: ['xomashyo', 'ishlab chiqarish'],
-      status: 'completed',
-      created_at: '2024-01-28T14:30:00',
-      created_by: { name: 'Manager' }
-    },
-    {
-      id: 3,
-      type: 'expense',
-      amount: 2000000,
-      date: '2024-01-27',
-      category_id: 6,
-      category: { id: 6, name: 'Ish haqi' },
-      account_id: 1,
-      account: { id: 1, name: 'Asosiy hisob - UZS' },
-      payment_method: 'transfer',
-      reference_number: 'SAL-JAN24',
-      counterparty: 'Xodimlar',
-      description: 'Yanvar oylik maoshi',
-      tags: ['ish haqi', 'xodimlar'],
-      status: 'completed',
-      created_at: '2024-01-27T09:00:00',
-      created_by: { name: 'Admin' }
-    }
-  ]
+  const totalCategories = computed(() => categories.value.length)
+  const totalTransactions = computed(() => transactions.value.length)
   
-  const mockStats = {
-    totalIncome: 450000000,
-    totalExpense: 320000000,
-    balance: 130000000,
-    thisMonthIncome: 125000000,
-    thisMonthExpense: 85000000,
-    profit: 40000000,
-    profitMargin: 32,
-    cashFlow: 40000000,
-    incomeByCategory: [
-      { category: 'Mahsulot sotish', amount: 380000000, percentage: 84 },
-      { category: 'Xizmat ko\'rsatish', amount: 50000000, percentage: 11 },
-      { category: 'Boshqa kirimlar', amount: 20000000, percentage: 5 }
-    ],
-    expenseByCategory: [
-      { category: 'Xomashyo', amount: 150000000, percentage: 47 },
-      { category: 'Ish haqi', amount: 80000000, percentage: 25 },
-      { category: 'Kommunal', amount: 40000000, percentage: 13 },
-      { category: 'Boshqa', amount: 50000000, percentage: 15 }
-    ]
-  }
+  const totalIncome = computed(() => 
+    transactions.value
+      .filter(t => t.transaction_type === 'income')
+      .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+  )
   
-  const mockAccounts = [
-    { id: 1, name: 'Asosiy hisob - UZS', number: '****1234', balance: 85000000, currency: 'UZS' },
-    { id: 2, name: 'Naqd pul - Kassa', number: 'CASH', balance: 12000000, currency: 'UZS' },
-    { id: 3, name: 'Dollar hisobi - USD', number: '****5678', balance: 15000, currency: 'USD' },
-    { id: 4, name: 'Plastik karta', number: '****9012', balance: 8000000, currency: 'UZS' }
-  ]
+  const totalExpense = computed(() => 
+    transactions.value
+      .filter(t => t.transaction_type === 'expense')
+      .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+  )
   
-  const mockCategories = [
-    // Income categories
-    { id: 1, name: 'Mahsulot sotish', type: 'income', icon: 'ShoppingBag' },
-    { id: 2, name: 'Xizmat ko\'rsatish', type: 'income', icon: 'Briefcase' },
-    { id: 3, name: 'Investitsiya', type: 'income', icon: 'TrendingUp' },
-    { id: 4, name: 'Boshqa kirimlar', type: 'income', icon: 'Plus' },
-    // Expense categories
-    { id: 5, name: 'Xomashyo', type: 'expense', icon: 'Package' },
-    { id: 6, name: 'Ish haqi', type: 'expense', icon: 'Users' },
-    { id: 7, name: 'Kommunal xizmatlar', type: 'expense', icon: 'Zap' },
-    { id: 8, name: 'Transport', type: 'expense', icon: 'Truck' },
-    { id: 9, name: 'Ofis xarajatlari', type: 'expense', icon: 'Home' },
-    { id: 10, name: 'Marketing', type: 'expense', icon: 'Megaphone' },
-    { id: 11, name: 'Soliq', type: 'expense', icon: 'FileText' },
-    { id: 12, name: 'Boshqa xarajatlar', type: 'expense', icon: 'MoreHorizontal' }
-  ]
+  const netProfit = computed(() => totalIncome.value - totalExpense.value)
   
-  // Actions
+  const recentTransactions = computed(() => 
+    [...transactions.value]
+      .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
+      .slice(0, 10)
+  )
+
+  // ============ ACTIONS - CATEGORIES ============
   
-  /**
-   * Fetch finance statistics
-   */
-  async function fetchStats() {
+  async function fetchCategories(params = {}) {
     loading.value = true
     error.value = null
+    
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get('/finance/stats')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      stats.value = mockStats
-      return stats.value
+      const response = await financeService.getCategories(params)
+      categories.value = response.data || response
+      
+      // Separate by type
+      incomeCategories.value = categories.value.filter(c => c.category_type === 'income')
+      expenseCategories.value = categories.value.filter(c => c.category_type === 'expense')
+      
+      return categories.value
     } catch (err) {
-      error.value = err.message
+      error.value = err.response?.data || err.message
       throw err
     } finally {
       loading.value = false
     }
   }
   
-  /**
-   * Fetch transactions
-   */
+  async function fetchCategory(categoryId) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.getCategory(categoryId)
+      currentCategory.value = response.data || response
+      return currentCategory.value
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  async function createCategory(data) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.createCategory(data)
+      const newCategory = response.data || response
+      
+      categories.value.push(newCategory)
+      
+      // Update type-specific arrays
+      if (newCategory.category_type === 'income') {
+        incomeCategories.value.push(newCategory)
+      } else {
+        expenseCategories.value.push(newCategory)
+      }
+      
+      return newCategory
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  async function updateCategory(categoryId, data) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.updateCategory(categoryId, data)
+      const updated = response.data || response
+      
+      const index = categories.value.findIndex(c => c.id === categoryId)
+      if (index !== -1) {
+        categories.value[index] = updated
+      }
+      
+      // Refresh type-specific arrays
+      await fetchCategories()
+      
+      return updated
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  async function deleteCategory(categoryId) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      await financeService.deleteCategory(categoryId)
+      
+      categories.value = categories.value.filter(c => c.id !== categoryId)
+      incomeCategories.value = incomeCategories.value.filter(c => c.id !== categoryId)
+      expenseCategories.value = expenseCategories.value.filter(c => c.id !== categoryId)
+      
+      return true
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ============ ACTIONS - TRANSACTIONS ============
+  
   async function fetchTransactions(params = {}) {
     loading.value = true
     error.value = null
+    
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get('/finance/transactions', { params })
-      await new Promise(resolve => setTimeout(resolve, 300))
-      transactions.value = mockTransactions
+      const response = await financeService.getTransactions(params)
+      transactions.value = response.data || response
       return transactions.value
     } catch (err) {
-      error.value = err.message
+      error.value = err.response?.data || err.message
       throw err
     } finally {
       loading.value = false
     }
   }
   
-  /**
-   * Create transaction
-   */
+  async function fetchTransaction(transactionId) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.getTransaction(transactionId)
+      currentTransaction.value = response.data || response
+      return currentTransaction.value
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
   async function createTransaction(data) {
     loading.value = true
     error.value = null
+    
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.post('/finance/transactions', data)
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      const newTransaction = {
-        id: transactions.value.length + 1,
-        ...data,
-        status: 'completed',
-        created_at: new Date().toISOString(),
-        created_by: { name: 'Current User' }
-      }
+      const response = await financeService.createTransaction(data)
+      const newTransaction = response.data || response
       
       transactions.value.unshift(newTransaction)
       
-      // Update stats
-      if (data.type === 'income') {
-        stats.value.totalIncome += data.amount
-        stats.value.thisMonthIncome += data.amount
-      } else {
-        stats.value.totalExpense += data.amount
-        stats.value.thisMonthExpense += data.amount
-      }
-      stats.value.balance = stats.value.totalIncome - stats.value.totalExpense
-      
       return newTransaction
     } catch (err) {
-      error.value = err.message
+      error.value = err.response?.data || err.message
       throw err
     } finally {
       loading.value = false
     }
   }
   
-  /**
-   * Update transaction
-   */
-  async function updateTransaction(id, data) {
+  async function updateTransaction(transactionId, data) {
     loading.value = true
     error.value = null
-    try {
-      // TODO: Replace with actual API call
-      // const response = await api.put(`/finance/transactions/${id}`, data)
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      const index = transactions.value.findIndex(t => t.id === id)
-      if (index > -1) {
-        const oldAmount = transactions.value[index].amount
-        const oldType = transactions.value[index].type
-        
-        transactions.value[index] = {
-          ...transactions.value[index],
-          ...data,
-          updated_at: new Date().toISOString(),
-          updated_by: { name: 'Current User' }
-        }
-        
-        // Update stats
-        if (oldType === 'income') {
-          stats.value.totalIncome -= oldAmount
-          stats.value.thisMonthIncome -= oldAmount
-        } else {
-          stats.value.totalExpense -= oldAmount
-          stats.value.thisMonthExpense -= oldAmount
-        }
-        
-        if (data.type === 'income') {
-          stats.value.totalIncome += data.amount
-          stats.value.thisMonthIncome += data.amount
-        } else {
-          stats.value.totalExpense += data.amount
-          stats.value.thisMonthExpense += data.amount
-        }
-        
-        stats.value.balance = stats.value.totalIncome - stats.value.totalExpense
-      }
-      
-      return transactions.value[index]
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-  
-  /**
-   * Delete transaction
-   */
-  async function deleteTransaction(id) {
-    loading.value = true
-    error.value = null
-    try {
-      // TODO: Replace with actual API call
-      // await api.delete(`/finance/transactions/${id}`)
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const index = transactions.value.findIndex(t => t.id === id)
-      if (index > -1) {
-        const transaction = transactions.value[index]
-        
-        // Update stats
-        if (transaction.type === 'income') {
-          stats.value.totalIncome -= transaction.amount
-          stats.value.thisMonthIncome -= transaction.amount
-        } else {
-          stats.value.totalExpense -= transaction.amount
-          stats.value.thisMonthExpense -= transaction.amount
-        }
-        
-        stats.value.balance = stats.value.totalIncome - stats.value.totalExpense
-        
-        transactions.value.splice(index, 1)
-      }
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-  
-  /**
-   * Fetch accounts
-   */
-  async function fetchAccounts() {
-    loading.value = true
-    error.value = null
-    try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 300))
-      accounts.value = mockAccounts
-      return accounts.value
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-  
-  /**
-   * Fetch categories
-   */
-  async function fetchCategories() {
-    loading.value = true
-    error.value = null
-    try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 300))
-      categories.value = mockCategories
-      return categories.value
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-  
-  /**
-   * Get transaction by ID
-   */
-  function getTransactionById(id) {
-    return transactions.value.find(t => t.id === id)
-  }
-  
-  /**
-   * Get account by ID
-   */
-  function getAccountById(id) {
-    return accounts.value.find(a => a.id === id)
-  }
-  
-  /**
-   * Get category by ID
-   */
-  function getCategoryById(id) {
-    return categories.value.find(c => c.id === id)
-  }
-  
-  /**
-   * Get income transactions
-   */
-  function getIncomeTransactions() {
-    return transactions.value.filter(t => t.type === 'income')
-  }
-  
-  /**
-   * Get expense transactions
-   */
-  function getExpenseTransactions() {
-    return transactions.value.filter(t => t.type === 'expense')
-  }
-  
-  /**
-   * Search transactions
-   */
-  function searchTransactions(query) {
-    if (!query) return transactions.value
     
-    const lowerQuery = query.toLowerCase()
-    return transactions.value.filter(transaction => {
-      return transaction.description?.toLowerCase().includes(lowerQuery) ||
-             transaction.counterparty?.toLowerCase().includes(lowerQuery) ||
-             transaction.reference_number?.toLowerCase().includes(lowerQuery) ||
-             transaction.category?.name?.toLowerCase().includes(lowerQuery)
-    })
-  }
-  
-  /**
-   * Filter transactions by date range
-   */
-  function filterByDateRange(startDate, endDate) {
-    return transactions.value.filter(t => {
-      const date = new Date(t.date)
-      return date >= new Date(startDate) && date <= new Date(endDate)
-    })
-  }
-  
-  /**
-   * Filter transactions by category
-   */
-  function filterByCategory(categoryId) {
-    return transactions.value.filter(t => t.category_id === categoryId)
-  }
-  
-  /**
-   * Reset store
-   */
-  function reset() {
-    transactions.value = []
-    accounts.value = []
-    categories.value = []
-    stats.value = {
-      totalIncome: 0,
-      totalExpense: 0,
-      balance: 0,
-      thisMonthIncome: 0,
-      thisMonthExpense: 0,
-      profit: 0,
-      profitMargin: 0,
-      cashFlow: 0
+    try {
+      const response = await financeService.updateTransaction(transactionId, data)
+      const updated = response.data || response
+      
+      const index = transactions.value.findIndex(t => t.id === transactionId)
+      if (index !== -1) {
+        transactions.value[index] = updated
+      }
+      
+      return updated
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
     }
+  }
+  
+  async function deleteTransaction(transactionId) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      await financeService.deleteTransaction(transactionId)
+      
+      transactions.value = transactions.value.filter(t => t.id !== transactionId)
+      
+      return true
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ============ ACTIONS - REPORTS ============
+  
+  async function fetchProfitAndLoss(startDate, endDate) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.getProfitAndLoss(startDate, endDate)
+      profitAndLoss.value = response.data || response
+      return profitAndLoss.value
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  async function fetchCashFlow(startDate, endDate) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.getCashFlow(startDate, endDate)
+      cashFlow.value = response.data || response
+      return cashFlow.value
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  async function fetchBalanceSheet(reportDate = null) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.getBalanceSheet(reportDate)
+      balanceSheet.value = response.data || response
+      return balanceSheet.value
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ============ ACTIONS - STATISTICS ============
+  
+  async function fetchStatistics() {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await financeService.getStatistics()
+      statistics.value = response.data || response
+      return statistics.value
+    } catch (err) {
+      error.value = err.response?.data || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ============ HELPERS ============
+  
+  function resetState() {
+    categories.value = []
+    incomeCategories.value = []
+    expenseCategories.value = []
+    currentCategory.value = null
+    transactions.value = []
+    currentTransaction.value = null
+    profitAndLoss.value = null
+    cashFlow.value = null
+    balanceSheet.value = null
+    statistics.value = null
     loading.value = false
     error.value = null
   }
-  
+
   return {
     // State
-    transactions,
-    accounts,
     categories,
-    stats,
+    incomeCategories,
+    expenseCategories,
+    currentCategory,
+    transactions,
+    currentTransaction,
+    profitAndLoss,
+    cashFlow,
+    balanceSheet,
+    statistics,
     loading,
     error,
     
-    // Actions
-    fetchStats,
+    // Getters
+    totalCategories,
+    totalTransactions,
+    totalIncome,
+    totalExpense,
+    netProfit,
+    recentTransactions,
+    
+    // Actions - Categories
+    fetchCategories,
+    fetchCategory,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    
+    // Actions - Transactions
     fetchTransactions,
+    fetchTransaction,
     createTransaction,
     updateTransaction,
     deleteTransaction,
-    fetchAccounts,
-    fetchCategories,
     
-    // Getters
-    getTransactionById,
-    getAccountById,
-    getCategoryById,
-    getIncomeTransactions,
-    getExpenseTransactions,
-    searchTransactions,
-    filterByDateRange,
-    filterByCategory,
+    // Actions - Reports
+    fetchProfitAndLoss,
+    fetchCashFlow,
+    fetchBalanceSheet,
     
-    // Reset
-    reset
+    // Actions - Statistics
+    fetchStatistics,
+    
+    // Helpers
+    resetState
   }
 })

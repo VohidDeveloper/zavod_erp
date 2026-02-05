@@ -1,741 +1,286 @@
 <template>
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Kadrlar Tahlili</h1>
-          <p class="text-gray-600 mt-1">Xodimlar va ish haqi statistikasi</p>
-        </div>
-        <div class="flex items-center space-x-3">
-          <select
-            v-model="dateRange"
-            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="today">Bugun</option>
-            <option value="week">Bu hafta</option>
-            <option value="month">Bu oy</option>
-            <option value="quarter">Chorak</option>
-            <option value="year">Bu yil</option>
-          </select>
-          <button
-            @click="exportReport"
-            class="flex items-center px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50"
-          >
-            <ArrowDownTrayIcon class="w-5 h-5 mr-2" />
-            Eksport
-          </button>
-        </div>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Kadrlar Tahlili</h1>
+        <p class="text-gray-600 mt-1">Xodimlar va ish haqi statistikasi</p>
       </div>
-  
+      <div class="flex items-center space-x-3">
+        <button
+          @click="fetchData"
+          class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+        <button
+          @click="exportReport"
+          class="flex items-center px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Eksport
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <p class="text-red-800">{{ error }}</p>
+      <button @click="fetchData" class="mt-2 text-sm text-red-600 hover:text-red-700">
+        Qayta urinish
+      </button>
+    </div>
+
+    <!-- Content -->
+    <template v-else-if="hrData">
       <!-- Key Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Jami xodimlar"
-          :value="stats.totalEmployees"
-          :change="stats.employeeChange"
-          icon="UsersIcon"
-          color="blue"
-        >
-          <template #footer>
-            <p class="text-xs text-gray-600 mt-2">
-              Faol: {{ stats.activeEmployees }}
-            </p>
-          </template>
-        </StatCard>
-  
-        <StatCard
-          title="Ish haqi fondi"
-          :value="formatCurrency(stats.totalSalary)"
-          :change="stats.salaryChange"
-          icon="CurrencyDollarIcon"
-          color="green"
-        >
-          <template #footer>
-            <p class="text-xs text-gray-600 mt-2">
-              O'rtacha: {{ formatCurrency(stats.avgSalary) }}
-            </p>
-          </template>
-        </StatCard>
-  
-        <StatCard
-          title="Davomat"
-          :value="stats.attendance + '%'"
-          :change="stats.attendanceChange"
-          icon="ClockIcon"
-          color="purple"
-        >
-          <template #footer>
-            <p class="text-xs text-gray-600 mt-2">
-              Bugun: {{ stats.presentToday }}/{{ stats.totalEmployees }}
-            </p>
-          </template>
-        </StatCard>
-  
-        <StatCard
-          title="O'rtacha ish tajribasi"
-          :value="stats.avgTenure + ' yil'"
-          icon="AcademicCapIcon"
-          color="orange"
-        >
-          <template #footer>
-            <p class="text-xs text-gray-600 mt-2">
-              Rotatsiya: {{ stats.turnoverRate }}%
-            </p>
-          </template>
-        </StatCard>
-      </div>
-  
-      <!-- Charts Row 1 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Headcount Trend -->
-        <BaseCard>
-          <template #header>
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold">Xodimlar soni dinamikasi</h3>
-              <div class="flex space-x-2">
-                <button
-                  v-for="period in ['6m', '1y', '2y']"
-                  :key="period"
-                  @click="headcountPeriod = period"
-                  :class="[
-                    'px-3 py-1 text-sm rounded-lg',
-                    headcountPeriod === period
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  ]"
-                >
-                  {{ period }}
-                </button>
-              </div>
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-blue-100 text-sm">Jami xodimlar</p>
+              <p class="text-3xl font-bold mt-2">{{ formatNumber(hrData.total_employees) }}</p>
             </div>
-          </template>
-          <div class="h-80">
-            <LineChart :data="headcountData" :options="chartOptions" />
+            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
           </div>
-        </BaseCard>
-  
-        <!-- Department Distribution -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">Bo'limlar bo'yicha taqsimot</h3>
-          </template>
-          <div class="h-80">
-            <DoughnutChart :data="departmentDistributionData" :options="pieChartOptions" />
+          <div class="mt-4">
+            <span class="text-blue-100 text-xs">
+              Faol: {{ formatNumber(hrData.active_employees) }}
+            </span>
           </div>
-        </BaseCard>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Ish haqi fondi</p>
+              <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(hrData.total_salary_paid_this_month) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-4">
+            <span class="text-xs text-gray-500">
+              O'rtacha: {{ formatCurrency(hrData.average_salary) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Davomat</p>
+              <p class="text-2xl font-bold text-purple-600 mt-2">{{ formatNumber(hrData.attendance_rate) }}%</p>
+            </div>
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-4 w-full bg-gray-200 rounded-full h-2">
+            <div 
+              class="bg-purple-500 h-2 rounded-full transition-all duration-500"
+              :style="{ width: `${hrData.attendance_rate}%` }"
+            ></div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Ta'tilda</p>
+              <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatNumber(hrData.on_leave) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-4">
+            <span class="text-xs text-gray-500">
+              Xodimlar
+            </span>
+          </div>
+        </div>
       </div>
-  
-      <!-- Department Stats & Attendance -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Department Statistics -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">Bo'limlar statistikasi</h3>
-          </template>
-          <div class="space-y-3">
+
+      <!-- Department Stats -->
+      <div class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Bo'limlar statistikasi</h3>
+        </div>
+        <div v-if="hrData.departments.length > 0" class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div
-              v-for="dept in departments"
-              :key="dept.id"
+              v-for="(dept, index) in hrData.departments"
+              :key="index"
               class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-              @click="viewDepartmentDetails(dept)"
             >
               <div class="flex items-center space-x-3">
-                <div
-                  :class="[
-                    'w-12 h-12 rounded-lg flex items-center justify-center',
-                    dept.bgColor
-                  ]"
-                >
-                  <component :is="dept.icon" :class="['w-6 h-6', dept.iconColor]" />
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
                 </div>
                 <div>
-                  <p class="font-medium text-gray-900">{{ dept.name }}</p>
-                  <p class="text-sm text-gray-600">{{ dept.employees }} xodim</p>
+                  <p class="font-medium text-gray-900">{{ dept.name || dept.department }}</p>
+                  <p class="text-sm text-gray-600">{{ dept.employees || dept.count }} xodim</p>
                 </div>
               </div>
               <div class="text-right">
-                <p class="text-lg font-bold text-gray-900">{{ formatCurrency(dept.avgSalary) }}</p>
-                <p class="text-sm text-gray-600">O'rtacha maosh</p>
+                <p class="text-lg font-bold text-gray-900">{{ dept.employees || dept.count }}</p>
               </div>
             </div>
           </div>
-        </BaseCard>
-  
-        <!-- Attendance Overview -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">Davomat ko'rsatkichlari</h3>
-          </template>
-          <div class="h-80">
-            <BarChart :data="attendanceData" :options="barChartOptions" />
-          </div>
-        </BaseCard>
+        </div>
+        <div v-else class="p-6 text-center text-gray-400">
+          Ma'lumot yo'q
+        </div>
       </div>
-  
-      <!-- Salary & Age Distribution -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Salary Distribution -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">Ish haqi taqsimoti</h3>
-          </template>
-          <div class="h-80">
-            <BarChart :data="salaryDistributionData" :options="barChartOptions" />
-          </div>
-        </BaseCard>
-  
-        <!-- Age Distribution -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">Yosh taqsimoti</h3>
-          </template>
-          <div class="h-80">
-            <BarChart :data="ageDistributionData" :options="barChartOptions" />
-          </div>
-        </BaseCard>
-      </div>
-  
-      <!-- Top Performers & Recent Hires -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Top Performers -->
-        <BaseCard>
-          <template #header>
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold">Eng yaxshi xodimlar</h3>
-              <Badge color="blue">Bu oy</Badge>
-            </div>
-          </template>
-          <div class="space-y-3">
+
+      <!-- Leave Requests by Type -->
+      <div v-if="hrData.leave_requests_by_type.length > 0" class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Ta'til statistikasi</h3>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div
-              v-for="(employee, index) in topPerformers"
-              :key="employee.id"
-              class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition"
-            >
-              <div class="flex items-center space-x-3">
-                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-semibold text-sm">
-                  {{ index + 1 }}
-                </div>
-                <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                    {{ employee.name.split(' ').map(n => n[0]).join('') }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ employee.name }}</p>
-                    <p class="text-sm text-gray-600">{{ employee.position }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="text-right">
-                <div class="flex items-center space-x-1">
-                  <StarIcon class="w-5 h-5 text-yellow-500 fill-current" />
-                  <span class="font-semibold text-gray-900">{{ employee.rating }}</span>
-                </div>
-                <p class="text-xs text-gray-600">{{ employee.department }}</p>
-              </div>
-            </div>
-          </div>
-        </BaseCard>
-  
-        <!-- Recent Hires -->
-        <BaseCard>
-          <template #header>
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold">Yangi xodimlar</h3>
-              <Badge color="green">So'nggi 30 kun</Badge>
-            </div>
-          </template>
-          <div class="space-y-3">
-            <div
-              v-for="hire in recentHires"
-              :key="hire.id"
-              class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
-            >
-              <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  {{ hire.name.split(' ').map(n => n[0]).join('') }}
-                </div>
-                <div>
-                  <p class="font-medium text-gray-900">{{ hire.name }}</p>
-                  <p class="text-sm text-gray-600">{{ hire.position }}</p>
-                </div>
-              </div>
-              <div class="text-right">
-                <p class="text-sm font-medium text-gray-900">{{ hire.hireDate }}</p>
-                <p class="text-xs text-gray-600">{{ hire.department }}</p>
-              </div>
-            </div>
-          </div>
-        </BaseCard>
-      </div>
-  
-      <!-- Leave Requests & Training -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Leave Statistics -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">Ta'til statistikasi</h3>
-          </template>
-          <div class="space-y-4">
-            <div
-              v-for="leave in leaveStats"
-              :key="leave.type"
+              v-for="(leave, index) in hrData.leave_requests_by_type"
+              :key="index"
               class="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
             >
               <div class="flex items-center space-x-3">
-                <div
-                  :class="[
-                    'w-10 h-10 rounded-lg flex items-center justify-center',
-                    leave.bgColor
-                  ]"
-                >
-                  <component :is="leave.icon" :class="['w-5 h-5', leave.iconColor]" />
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                     :class="getLeaveColor(leave.type || leave.leave_type).bg">
+                  <svg class="w-5 h-5" :class="getLeaveColor(leave.type || leave.leave_type).text" 
+                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 </div>
                 <div>
-                  <p class="font-medium text-gray-900">{{ leave.type }}</p>
-                  <p class="text-sm text-gray-600">{{ leave.description }}</p>
+                  <p class="font-medium text-gray-900">{{ leave.type || leave.leave_type }}</p>
+                  <p class="text-sm text-gray-600">Ta'til turlari</p>
                 </div>
               </div>
               <div class="text-right">
                 <p class="text-2xl font-bold text-gray-900">{{ leave.count }}</p>
-                <p class="text-sm text-gray-600">{{ leave.days }} kun</p>
+                <p class="text-sm text-gray-600">{{ leave.days || 0 }} kun</p>
               </div>
             </div>
           </div>
-        </BaseCard>
-  
-        <!-- Training Completion -->
-        <BaseCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">O'quv dasturlari</h3>
-          </template>
-          <div class="space-y-4">
-            <div
-              v-for="training in trainings"
-              :key="training.id"
-              class="p-4 bg-gray-50 rounded-lg"
-            >
-              <div class="flex items-center justify-between mb-2">
-                <p class="font-medium text-gray-900">{{ training.name }}</p>
-                <Badge :color="training.completion >= 80 ? 'green' : 'orange'">
-                  {{ training.completion }}%
-                </Badge>
-              </div>
-              <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
-                <span>{{ training.completed }}/{{ training.total }} xodim</span>
-                <span>{{ training.deadline }}</span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  :class="[
-                    'h-2 rounded-full',
-                    training.completion >= 80 ? 'bg-green-600' : 'bg-orange-600'
-                  ]"
-                  :style="{ width: `${training.completion}%` }"
-                ></div>
-              </div>
-            </div>
-          </div>
-        </BaseCard>
+        </div>
       </div>
-  
-      <!-- Detailed Employee Table -->
-      <BaseCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold">Xodimlar ro'yxati</h3>
-            <div class="flex items-center space-x-3">
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Qidirish..."
-                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-              <select
-                v-model="departmentFilter"
-                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Barcha bo'limlar</option>
-                <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                  {{ dept.name }}
-                </option>
-              </select>
+
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Salary Summary -->
+        <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Ish haqi xulosasi</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+              <span class="text-sm text-gray-600">Jami to'langan (bu oy)</span>
+              <span class="text-lg font-bold text-green-600">{{ formatCurrency(hrData.total_salary_paid_this_month) }}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+              <span class="text-sm text-gray-600">O'rtacha ish haqi</span>
+              <span class="text-lg font-bold text-blue-600">{{ formatCurrency(hrData.average_salary) }}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+              <span class="text-sm text-gray-600">Davomat darajasi</span>
+              <span class="text-lg font-bold text-purple-600">{{ formatNumber(hrData.attendance_rate) }}%</span>
             </div>
           </div>
-        </template>
-  
-        <DataTable
-          :data="filteredEmployees"
-          :columns="tableColumns"
-          :loading="loading"
-          @sort="handleSort"
-        >
-          <template #status="{ row }">
-            <Badge :color="row.status === 'active' ? 'green' : 'gray'">
-              {{ row.status === 'active' ? 'Faol' : 'Nofaol' }}
-            </Badge>
-          </template>
-  
-          <template #attendance="{ row }">
-            <div class="text-center">
-              <p class="font-medium">{{ row.attendance }}%</p>
-              <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                <div
-                  :class="[
-                    'h-2 rounded-full',
-                    row.attendance >= 90 ? 'bg-green-600' : row.attendance >= 70 ? 'bg-yellow-600' : 'bg-red-600'
-                  ]"
-                  :style="{ width: `${row.attendance}%` }"
-                ></div>
+        </div>
+
+        <!-- Employee Status -->
+        <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Xodimlar holati</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+              <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span class="text-sm text-gray-600">Faol xodimlar</span>
               </div>
+              <span class="text-lg font-bold text-gray-900">{{ formatNumber(hrData.active_employees) }}</span>
             </div>
-          </template>
-  
-          <template #performance="{ row }">
-            <div class="flex items-center space-x-1">
-              <StarIcon
-                v-for="i in 5"
-                :key="i"
-                :class="[
-                  'w-4 h-4',
-                  i <= row.performance ? 'text-yellow-500 fill-current' : 'text-gray-300'
-                ]"
-              />
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+              <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span class="text-sm text-gray-600">Ta'tilda</span>
+              </div>
+              <span class="text-lg font-bold text-gray-900">{{ formatNumber(hrData.on_leave) }}</span>
             </div>
-          </template>
-  
-          <template #actions="{ row }">
-            <div class="flex items-center space-x-2">
-              <button
-                @click="viewEmployeeDetails(row)"
-                class="text-blue-600 hover:text-blue-700"
-              >
-                Ko'rish
-              </button>
-              <button
-                @click="editEmployee(row)"
-                class="text-gray-600 hover:text-gray-700"
-              >
-                Tahrirlash
-              </button>
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg">
+              <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span class="text-sm text-gray-600">Jami xodimlar</span>
+              </div>
+              <span class="text-lg font-bold text-gray-900">{{ formatNumber(hrData.total_employees) }}</span>
             </div>
-          </template>
-        </DataTable>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useAnalyticsStore } from '@/stores/analytics'
+import { formatNumber, formatCurrency } from '@/utils/formatters'
+
+const analyticsStore = useAnalyticsStore()
+
+const loading = computed(() => analyticsStore.loading)
+const error = computed(() => analyticsStore.error?.detail || analyticsStore.error?.message || null)
+const hrData = computed(() => analyticsStore.hrAnalytics)
+
+function getLeaveColor(leaveType) {
+  const type = (leaveType || '').toLowerCase()
   
-        <Pagination
-          v-model="pagination.page"
-          :total="pagination.total"
-          :per-page="pagination.perPage"
-          @change="loadEmployees"
-        />
-      </BaseCard>
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref, reactive, computed, onMounted } from 'vue'
-  import { useHRStore } from '@/stores/hr'
-  import { useRouter } from 'vue-router'
-  import {
-    ArrowDownTrayIcon,
-    UsersIcon,
-    CurrencyDollarIcon,
-    ClockIcon,
-    AcademicCapIcon,
-    StarIcon,
-    CalendarIcon,
-    BeakerIcon,
-    CogIcon,
-    BriefcaseIcon,
-    WrenchScrewdriverIcon
-  } from '@heroicons/vue/24/outline'
-  import StatCard from '@/components/common/cards/StatCard.vue'
-  import BaseCard from '@/components/common/cards/BaseCard.vue'
-  import LineChart from '@/components/common/charts/LineChart.vue'
-  import DoughnutChart from '@/components/common/charts/DoughnutChart.vue'
-  import BarChart from '@/components/common/charts/BarChart.vue'
-  import DataTable from '@/components/common/tables/DataTable.vue'
-  import Pagination from '@/components/common/navigation/Pagination.vue'
-  import Badge from '@/components/common/feedback/Badge.vue'
-  
-  const hrStore = useHRStore()
-  const router = useRouter()
-  
-  const loading = ref(false)
-  const dateRange = ref('month')
-  const headcountPeriod = ref('1y')
-  const searchQuery = ref('')
-  const departmentFilter = ref('')
-  
-  const stats = ref({
-    totalEmployees: 95,
-    employeeChange: 5.2,
-    activeEmployees: 92,
-    totalSalary: 475000000,
-    salaryChange: 8.3,
-    avgSalary: 5000000,
-    attendance: 94.5,
-    attendanceChange: 2.1,
-    presentToday: 87,
-    avgTenure: 3.8,
-    turnoverRate: 12.5
-  })
-  
-  const departments = ref([
-    {
-      id: 1,
-      name: 'Ishlab chiqarish',
-      employees: 67,
-      avgSalary: 4800000,
-      icon: CogIcon,
-      bgColor: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    {
-      id: 2,
-      name: 'Boshqaruv',
-      employees: 18,
-      avgSalary: 7500000,
-      icon: BriefcaseIcon,
-      bgColor: 'bg-purple-100',
-      iconColor: 'text-purple-600'
-    },
-    {
-      id: 3,
-      name: 'Xizmat ko\'rsatish',
-      employees: 10,
-      avgSalary: 3500000,
-      icon: WrenchScrewdriverIcon,
-      bgColor: 'bg-orange-100',
-      iconColor: 'text-orange-600'
-    }
-  ])
-  
-  const topPerformers = ref([
-    { id: 1, name: 'Ali Valiyev', position: 'Ustachi', department: 'Ishlab chiqarish', rating: 4.9 },
-    { id: 2, name: 'Nodira Karimova', position: 'Menejer', department: 'Boshqaruv', rating: 4.8 },
-    { id: 3, name: 'Sardor Toshmatov', position: 'Texnik', department: 'Xizmat', rating: 4.7 },
-    { id: 4, name: 'Dilnoza Ahmedova', position: 'Operator', department: 'Ishlab chiqarish', rating: 4.6 },
-    { id: 5, name: 'Jahongir Aliyev', position: 'Nazoratchi', department: 'Ishlab chiqarish', rating: 4.5 }
-  ])
-  
-  const recentHires = ref([
-    { id: 1, name: 'Otabek Rahimov', position: 'Operator', department: 'Ishlab chiqarish', hireDate: '2024-01-15' },
-    { id: 2, name: 'Malika Yusupova', position: 'Hisobchi', department: 'Boshqaruv', hireDate: '2024-01-10' },
-    { id: 3, name: 'Bekzod Nazarov', position: 'Texnik', department: 'Xizmat', hireDate: '2024-01-05' },
-    { id: 4, name: 'Zarina Ismoilova', position: 'Ustachi', department: 'Ishlab chiqarish', hireDate: '2023-12-28' }
-  ])
-  
-  const leaveStats = ref([
-    {
-      type: 'Yillik ta\'til',
-      description: 'Rejalashtirilgan',
-      count: 12,
-      days: 168,
-      icon: CalendarIcon,
-      bgColor: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    {
-      type: 'Kasallik',
-      description: 'Tibbiy',
-      count: 8,
-      days: 45,
-      icon: BeakerIcon,
-      bgColor: 'bg-red-100',
-      iconColor: 'text-red-600'
-    },
-    {
-      type: 'Oilaviy',
-      description: 'Shaxsiy',
-      count: 5,
-      days: 15,
-      icon: UsersIcon,
-      bgColor: 'bg-purple-100',
-      iconColor: 'text-purple-600'
-    }
-  ])
-  
-  const trainings = ref([
-    { id: 1, name: 'Xavfsizlik texnikasi', completed: 85, total: 95, completion: 89, deadline: '2024-02-15' },
-    { id: 2, name: 'Yangi uskunalar', completed: 45, total: 67, completion: 67, deadline: '2024-03-01' },
-    { id: 3, name: 'Sifat nazorati', completed: 72, total: 75, completion: 96, deadline: '2024-02-28' }
-  ])
-  
-  const employees = ref([])
-  const pagination = reactive({
-    page: 1,
-    perPage: 10,
-    total: 0
-  })
-  
-  const headcountData = computed(() => ({
-    labels: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'],
-    datasets: [
-      {
-        label: 'Xodimlar soni',
-        data: [88, 89, 90, 89, 91, 92, 93, 94, 94, 95, 95, 95],
-        borderColor: '#3B82F6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.4,
-        fill: true
-      }
-    ]
-  }))
-  
-  const departmentDistributionData = computed(() => ({
-    labels: ['Ishlab chiqarish', 'Boshqaruv', 'Xizmat ko\'rsatish'],
-    datasets: [{
-      data: [67, 18, 10],
-      backgroundColor: ['#3B82F6', '#8B5CF6', '#F59E0B']
-    }]
-  }))
-  
-  const attendanceData = computed(() => ({
-    labels: ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'],
-    datasets: [{
-      label: 'Davomat (%)',
-      data: [96, 94, 95, 93, 92, 88],
-      backgroundColor: '#10B981'
-    }]
-  }))
-  
-  const salaryDistributionData = computed(() => ({
-    labels: ['3-4M', '4-5M', '5-6M', '6-7M', '7M+'],
-    datasets: [{
-      label: 'Xodimlar soni',
-      data: [15, 32, 28, 12, 8],
-      backgroundColor: '#3B82F6'
-    }]
-  }))
-  
-  const ageDistributionData = computed(() => ({
-    labels: ['18-25', '26-35', '36-45', '46-55', '55+'],
-    datasets: [{
-      label: 'Xodimlar soni',
-      data: [18, 38, 25, 12, 2],
-      backgroundColor: '#8B5CF6'
-    }]
-  }))
-  
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top'
-      }
-    }
+  if (type.includes('yillik') || type.includes('annual')) {
+    return { bg: 'bg-blue-100', text: 'text-blue-600' }
+  } else if (type.includes('kasallik') || type.includes('sick')) {
+    return { bg: 'bg-red-100', text: 'text-red-600' }
+  } else if (type.includes('oilaviy') || type.includes('family')) {
+    return { bg: 'bg-purple-100', text: 'text-purple-600' }
   }
   
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'right'
-      }
-    }
+  return { bg: 'bg-gray-100', text: 'text-gray-600' }
+}
+
+async function fetchData() {
+  try {
+    await analyticsStore.fetchHRAnalytics()
+  } catch (err) {
+    console.error('HR analytics error:', err)
   }
-  
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      }
-    }
-  }
-  
-  const tableColumns = [
-    { key: 'name', label: 'FIO', sortable: true },
-    { key: 'position', label: 'Lavozim' },
-    { key: 'department', label: 'Bo\'lim' },
-    { key: 'salary', label: 'Maosh', sortable: true },
-    { key: 'attendance', label: 'Davomat', slot: true, sortable: true },
-    { key: 'performance', label: 'Reyting', slot: true },
-    { key: 'status', label: 'Holat', slot: true },
-    { key: 'actions', label: '', slot: true }
-  ]
-  
-  const filteredEmployees = computed(() => {
-    let filtered = employees.value
-  
-    if (searchQuery.value) {
-      const query = searchQuery.value.toLowerCase()
-      filtered = filtered.filter(e =>
-        e.name.toLowerCase().includes(query) ||
-        e.position.toLowerCase().includes(query)
-      )
-    }
-  
-    if (departmentFilter.value) {
-      filtered = filtered.filter(e => e.departmentId === departmentFilter.value)
-    }
-  
-    return filtered
-  })
-  
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('uz-UZ', {
-      style: 'currency',
-      currency: 'UZS',
-      minimumFractionDigits: 0
-    }).format(value)
-  }
-  
-  const loadEmployees = async () => {
-    loading.value = true
-    try {
-      const response = await hrStore.fetchEmployees({
-        page: pagination.page,
-        per_page: pagination.perPage,
-        department: departmentFilter.value,
-        search: searchQuery.value
-      })
-      employees.value = response.data
-      pagination.total = response.total
-    } catch (error) {
-      console.error('Failed to load employees:', error)
-    } finally {
-      loading.value = false
-    }
-  }
-  
-  const handleSort = (column) => {
-    console.log('Sort by:', column)
-    // Implement sorting logic
-  }
-  
-  const viewEmployeeDetails = (employee) => {
-    router.push(`/hr/employees/${employee.id}`)
-  }
-  
-  const editEmployee = (employee) => {
-    router.push(`/hr/employees/${employee.id}/edit`)
-  }
-  
-  const viewDepartmentDetails = (department) => {
-    router.push({
-      name: 'hr-employees',
-      query: { department: department.id }
-    })
-  }
-  
-  const exportReport = async () => {
-    try {
-      await hrStore.exportAnalytics({
-        dateRange: dateRange.value,
-        format: 'xlsx'
-      })
-    } catch (error) {
-      console.error('Failed to export report:', error)
-    }
-  }
-  
-  onMounted(() => {
-    loadEmployees()
-  })
-  </script>
+}
+
+function exportReport() {
+  console.log('Export HR report')
+}
+
+onMounted(() => {
+  fetchData()
+})
+</script>

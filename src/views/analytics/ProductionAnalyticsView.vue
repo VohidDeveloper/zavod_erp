@@ -1,32 +1,47 @@
 <template>
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex justify-between items-center">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Ishlab chiqarish tahlili</h1>
-          <p class="text-gray-600 mt-1">Ishlab chiqarish ko'rsatkichlari va statistika</p>
-        </div>
-        <div class="flex gap-2">
-          <select v-model="period" class="input" @change="fetchData">
-            <option value="today">Bugun</option>
-            <option value="week">Bu hafta</option>
-            <option value="month">Bu oy</option>
-            <option value="quarter">Bu chorak</option>
-            <option value="year">Bu yil</option>
-          </select>
-          <button @click="exportReport" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            Hisobot
-          </button>
-        </div>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Ishlab chiqarish tahlili</h1>
+        <p class="text-gray-600 mt-1">Ishlab chiqarish ko'rsatkichlari va statistika</p>
       </div>
-  
+      <div class="flex gap-2">
+        <select v-model="period" class="input" @change="handlePeriodChange">
+          <option value="today">Bugun</option>
+          <option value="week">Bu hafta</option>
+          <option value="month">Bu oy</option>
+          <option value="quarter">Bu chorak</option>
+          <option value="year">Bu yil</option>
+        </select>
+        <button @click="exportReport" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          Hisobot
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <p class="text-red-800">{{ error }}</p>
+      <button @click="fetchData" class="mt-2 text-sm text-red-600 hover:text-red-700">
+        Qayta urinish
+      </button>
+    </div>
+
+    <!-- Content -->
+    <template v-else-if="productionData">
       <!-- Key Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg p-6 text-white">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-primary-100 text-sm">Jami ishlab chiqarish</p>
-              <p class="text-3xl font-bold mt-2">{{ formatNumber(metrics.total_production) }}</p>
+              <p class="text-3xl font-bold mt-2">{{ formatNumber(productionData.total_output) }}</p>
               <p class="text-primary-100 text-xs mt-2">dona</p>
             </div>
             <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
@@ -36,18 +51,17 @@
             </div>
           </div>
           <div class="mt-4 flex items-center">
-            <span :class="metrics.production_change >= 0 ? 'text-green-300' : 'text-red-300'" class="text-sm font-medium">
-              {{ metrics.production_change >= 0 ? '+' : '' }}{{ metrics.production_change }}%
+            <span class="text-primary-100 text-xs">
+              {{ formatDate(productionData.period_start) }} - {{ formatDate(productionData.period_end) }}
             </span>
-            <span class="text-primary-100 text-xs ml-2">o'tgan davr bilan</span>
           </div>
         </div>
-  
+
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">Samaradorlik</p>
-              <p class="text-2xl font-bold text-gray-900 mt-2">{{ metrics.efficiency }}%</p>
+              <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatNumber(productionData.average_efficiency) }}%</p>
             </div>
             <div class="w-12 h-12 bg-success-100 rounded-lg flex items-center justify-center">
               <svg class="w-6 h-6 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,16 +72,16 @@
           <div class="mt-4 w-full bg-gray-200 rounded-full h-2">
             <div 
               class="bg-success-500 h-2 rounded-full transition-all duration-500"
-              :style="{ width: `${metrics.efficiency}%` }"
+              :style="{ width: `${productionData.average_efficiency}%` }"
             ></div>
           </div>
         </div>
-  
+
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">Nuqsonli mahsulot</p>
-              <p class="text-2xl font-bold text-danger-600 mt-2">{{ formatNumber(metrics.defective) }}</p>
+              <p class="text-2xl font-bold text-danger-600 mt-2">{{ formatNumber(productionData.total_defects) }}</p>
             </div>
             <div class="w-12 h-12 bg-danger-100 rounded-lg flex items-center justify-center">
               <svg class="w-6 h-6 text-danger-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,16 +91,16 @@
           </div>
           <div class="mt-4">
             <span class="text-xs text-gray-500">
-              {{ ((metrics.defective / metrics.total_production) * 100).toFixed(2) }}% nuqson darajasi
+              {{ formatNumber(productionData.defect_rate) }}% nuqson darajasi
             </span>
           </div>
         </div>
-  
+
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-600">O'rtacha vaqt</p>
-              <p class="text-2xl font-bold text-gray-900 mt-2">{{ metrics.avg_time }}</p>
+              <p class="text-sm text-gray-600">Smenalar</p>
+              <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatNumber(productionData.total_shifts) }}</p>
             </div>
             <div class="w-12 h-12 bg-warning-100 rounded-lg flex items-center justify-center">
               <svg class="w-6 h-6 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,197 +109,150 @@
             </div>
           </div>
           <div class="mt-4">
-            <span class="text-xs text-gray-500">bir mahsulot uchun</span>
+            <span class="text-xs text-gray-500">tanlanilgan davr uchun</span>
           </div>
         </div>
       </div>
-  
-      <!-- Charts Row 1 -->
+
+      <!-- Charts Row -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Production Trend Chart -->
+        <!-- Production by Day -->
         <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-semibold text-gray-900">Ishlab chiqarish dinamikasi</h3>
-            <select v-model="chartPeriod" class="text-sm border border-gray-300 rounded px-3 py-1">
-              <option value="day">Kunlik</option>
-              <option value="week">Haftalik</option>
-              <option value="month">Oylik</option>
-            </select>
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Kunlik ishlab chiqarish</h3>
+          <div v-if="productionData.production_by_day.length > 0" class="h-80">
+            <div class="space-y-2">
+              <div 
+                v-for="(day, index) in productionData.production_by_day.slice(0, 10)" 
+                :key="index"
+                class="flex items-center justify-between p-2 bg-gray-50 rounded"
+              >
+                <span class="text-sm text-gray-600">{{ day.date }}</span>
+                <span class="text-sm font-semibold text-gray-900">{{ formatNumber(day.output || 0) }}</span>
+              </div>
+            </div>
           </div>
-          <div class="h-64">
-            <canvas id="productionTrendChart"></canvas>
-          </div>
-        </div>
-  
-        <!-- Product Distribution Chart -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-6">Mahsulot bo'yicha taqsimot</h3>
-          <div class="h-64">
-            <canvas id="productDistributionChart"></canvas>
+          <div v-else class="h-80 flex items-center justify-center text-gray-400">
+            Ma'lumot yo'q
           </div>
         </div>
-      </div>
-  
-      <!-- Charts Row 2 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Efficiency Chart -->
+
+        <!-- Production by Line -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-6">Samaradorlik ko'rsatkichlari</h3>
-          <div class="h-64">
-            <canvas id="efficiencyChart"></canvas>
-          </div>
-        </div>
-  
-        <!-- Machine Utilization -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-6">Mashina bandligi</h3>
-          <div class="space-y-4">
-            <div v-for="machine in machineUtilization" :key="machine.id" class="space-y-2">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Liniya bo'yicha ishlab chiqarish</h3>
+          <div v-if="productionData.production_by_line.length > 0" class="space-y-3">
+            <div 
+              v-for="(line, index) in productionData.production_by_line" 
+              :key="index"
+              class="space-y-2"
+            >
               <div class="flex items-center justify-between text-sm">
-                <span class="font-medium text-gray-900">{{ machine.name }}</span>
-                <span class="text-gray-600">{{ machine.utilization }}%</span>
+                <span class="font-medium text-gray-900">{{ line.name || `Liniya ${index + 1}` }}</span>
+                <span class="text-gray-600">{{ formatNumber(line.output || 0) }}</span>
               </div>
               <div class="w-full bg-gray-200 rounded-full h-3">
                 <div 
-                  class="h-3 rounded-full transition-all duration-500"
-                  :class="getUtilizationColor(machine.utilization)"
-                  :style="{ width: `${machine.utilization}%` }"
+                  class="h-3 rounded-full bg-primary-500 transition-all duration-500"
+                  :style="{ width: `${(line.output / productionData.total_output * 100).toFixed(0)}%` }"
                 ></div>
               </div>
             </div>
           </div>
+          <div v-else class="text-center text-gray-400 py-8">
+            Ma'lumot yo'q
+          </div>
         </div>
       </div>
-  
-      <!-- Top Products Table -->
+
+      <!-- Top Defect Reasons -->
       <div class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Eng ko'p ishlab chiqarilgan mahsulotlar</h3>
+          <h3 class="text-lg font-semibold text-gray-900">Asosiy nuqson sabablari</h3>
         </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mahsulot</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Miqdor</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Nuqsonli</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sifat %</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">O'rtacha vaqt</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="(product, index) in topProducts" :key="product.id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm text-gray-900">{{ index + 1 }}</td>
-                <td class="px-6 py-4">
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">{{ product.name }}</p>
-                    <p class="text-xs text-gray-500">{{ product.code }}</p>
-                  </div>
-                </td>
-                <td class="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                  {{ formatNumber(product.quantity) }}
-                </td>
-                <td class="px-6 py-4 text-right text-sm text-danger-600">
-                  {{ formatNumber(product.defective) }}
-                </td>
-                <td class="px-6 py-4 text-right">
-                  <span 
-                    class="px-2 py-1 text-xs font-medium rounded-full"
-                    :class="getQualityClass(product.quality_rate)"
-                  >
-                    {{ product.quality_rate }}%
-                  </span>
-                </td>
-                <td class="px-6 py-4 text-right text-sm text-gray-900">
-                  {{ product.avg_time }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-if="productionData.top_defect_reasons.length > 0" class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div 
+              v-for="(reason, index) in productionData.top_defect_reasons" 
+              :key="index"
+              class="p-4 bg-red-50 border border-red-200 rounded-lg"
+            >
+              <div class="flex items-start justify-between">
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900">{{ reason.name || reason.reason }}</p>
+                  <p class="text-2xl font-bold text-red-600 mt-2">{{ formatNumber(reason.count || 0) }}</p>
+                </div>
+                <span class="text-xs text-red-600 bg-red-100 px-2 py-1 rounded">
+                  {{ ((reason.count / productionData.total_defects) * 100).toFixed(1) }}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="p-6 text-center text-gray-400">
+          Ma'lumot yo'q
         </div>
       </div>
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted, watch } from 'vue'
-  import { useAnalyticsStore } from '@/stores/analytics'
-  import { formatNumber } from '@/utils/formatters'
-  
-  const analyticsStore = useAnalyticsStore()
-  
-  const period = ref('month')
-  const chartPeriod = ref('day')
-  
-  const metrics = ref({
-    total_production: 0,
-    production_change: 0,
-    efficiency: 0,
-    defective: 0,
-    avg_time: '0h',
-  })
-  
-  const machineUtilization = ref([])
-  const topProducts = ref([])
-  
-  onMounted(() => {
-    fetchData()
-    initCharts()
-  })
-  
-  watch(chartPeriod, () => {
-    updateProductionChart()
-  })
-  
-  async function fetchData() {
-    try {
-      const data = await analyticsStore.fetchProductionAnalytics(period.value)
-      metrics.value = data.metrics
-      machineUtilization.value = data.machine_utilization
-      topProducts.value = data.top_products
-      updateCharts(data)
-    } catch (error) {
-      console.error('Analytics error:', error)
-    }
+    </template>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useAnalyticsStore } from '@/stores/analytics'
+import { formatNumber, formatDate } from '@/utils/formatters'
+
+const analyticsStore = useAnalyticsStore()
+
+const period = ref('month')
+const loading = computed(() => analyticsStore.loading)
+const error = computed(() => analyticsStore.error?.detail || analyticsStore.error?.message || null)
+const productionData = computed(() => analyticsStore.productionAnalytics)
+
+function getDateRange(periodValue) {
+  const endDate = new Date()
+  let startDate = new Date()
+
+  switch (periodValue) {
+    case 'today':
+      startDate = new Date()
+      break
+    case 'week':
+      startDate.setDate(endDate.getDate() - 7)
+      break
+    case 'month':
+      startDate.setMonth(endDate.getMonth() - 1)
+      break
+    case 'quarter':
+      startDate.setMonth(endDate.getMonth() - 3)
+      break
+    case 'year':
+      startDate.setFullYear(endDate.getFullYear() - 1)
+      break
   }
-  
-  function initCharts() {
-    // Initialize Chart.js charts here
-    // This is placeholder - actual implementation would use Chart.js library
+
+  return {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0]
   }
-  
-  function updateCharts(data) {
-    updateProductionChart()
-    updateProductDistributionChart(data)
-    updateEfficiencyChart(data)
+}
+
+async function fetchData() {
+  try {
+    const { startDate, endDate } = getDateRange(period.value)
+    await analyticsStore.fetchProductionAnalytics(startDate, endDate)
+  } catch (err) {
+    console.error('Production analytics error:', err)
   }
-  
-  function updateProductionChart() {
-    // Update production trend chart
-  }
-  
-  function updateProductDistributionChart(data) {
-    // Update product distribution pie chart
-  }
-  
-  function updateEfficiencyChart(data) {
-    // Update efficiency line chart
-  }
-  
-  function getUtilizationColor(utilization) {
-    if (utilization >= 80) return 'bg-success-500'
-    if (utilization >= 60) return 'bg-warning-500'
-    return 'bg-danger-500'
-  }
-  
-  function getQualityClass(quality) {
-    if (quality >= 95) return 'bg-success-100 text-success-800'
-    if (quality >= 90) return 'bg-warning-100 text-warning-800'
-    return 'bg-danger-100 text-danger-800'
-  }
-  
-  function exportReport() {
-    console.log('Export production report')
-  }
-  </script>
+}
+
+function handlePeriodChange() {
+  fetchData()
+}
+
+function exportReport() {
+  console.log('Export production report')
+}
+
+onMounted(() => {
+  fetchData()
+})
+</script>

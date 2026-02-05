@@ -1,227 +1,215 @@
 import { apiClient } from './api'
 
 const hrService = {
-  // ==================== EMPLOYEES ====================
+  // ============ DEPARTMENTS ============
   
-  getEmployees(params = {}) {
-    return apiClient.get('/hr/employees', params)
-  },
-
-  getEmployee(id) {
-    return apiClient.get(`/hr/employees/${id}`)
-  },
-
-  createEmployee(data) {
-    return apiClient.post('/hr/employees', data)
-  },
-
-  updateEmployee(id, data) {
-    return apiClient.put(`/hr/employees/${id}`, data)
-  },
-
-  deleteEmployee(id) {
-    return apiClient.delete(`/hr/employees/${id}`)
-  },
-
-  terminateEmployee(id, data) {
-    return apiClient.post(`/hr/employees/${id}/terminate`, data)
-  },
-
-  activateEmployee(id) {
-    return apiClient.post(`/hr/employees/${id}/activate`)
-  },
-
-  // ==================== ATTENDANCE ====================
-  
-  getAttendance(params = {}) {
-    return apiClient.get('/hr/attendance', params)
-  },
-
-  getEmployeeAttendance(employeeId, params = {}) {
-    return apiClient.get(`/hr/employees/${employeeId}/attendance`, params)
-  },
-
-  markAttendance(data) {
-    return apiClient.post('/hr/attendance', data)
-  },
-
-  updateAttendance(id, data) {
-    return apiClient.put(`/hr/attendance/${id}`, data)
-  },
-
-  deleteAttendance(id) {
-    return apiClient.delete(`/hr/attendance/${id}`)
-  },
-
-  getTodayAttendance() {
-    return apiClient.get('/hr/attendance/today')
-  },
-
-  // ==================== SALARIES ====================
-  
-  getSalaries(params = {}) {
-    return apiClient.get('/hr/salaries', params)
-  },
-
-  getSalary(id) {
-    return apiClient.get(`/hr/salaries/${id}`)
-  },
-
-  getEmployeeSalary(employeeId) {
-    return apiClient.get(`/hr/employees/${employeeId}/salary`)
-  },
-
-  createSalary(data) {
-    return apiClient.post('/hr/salaries', data)
-  },
-
-  updateSalary(id, data) {
-    return apiClient.put(`/hr/salaries/${id}`, data)
-  },
-
-  deleteSalary(id) {
-    return apiClient.delete(`/hr/salaries/${id}`)
-  },
-
-  // Payroll
-  processPayroll(data) {
-    return apiClient.post('/hr/payroll/process', data)
-  },
-
-  getPayrollHistory(params = {}) {
-    return apiClient.get('/hr/payroll/history', params)
-  },
-
-  getPayrollReport(month, year) {
-    return apiClient.get('/hr/payroll/report', { month, year })
-  },
-
-  generatePayslip(employeeId, month, year) {
-    return apiClient.get(`/hr/employees/${employeeId}/payslip`, { month, year })
-  },
-
-  // ==================== LEAVE REQUESTS ====================
-  
-  getLeaveRequests(params = {}) {
-    return apiClient.get('/hr/leave-requests', params)
-  },
-
-  getLeaveRequest(id) {
-    return apiClient.get(`/hr/leave-requests/${id}`)
-  },
-
-  getEmployeeLeaveRequests(employeeId, params = {}) {
-    return apiClient.get(`/hr/employees/${employeeId}/leave-requests`, params)
-  },
-
-  createLeaveRequest(data) {
-    return apiClient.post('/hr/leave-requests', data)
-  },
-
-  updateLeaveRequest(id, data) {
-    return apiClient.put(`/hr/leave-requests/${id}`, data)
-  },
-
-  deleteLeaveRequest(id) {
-    return apiClient.delete(`/hr/leave-requests/${id}`)
-  },
-
-  approveLeaveRequest(id, data = {}) {
-    return apiClient.post(`/hr/leave-requests/${id}/approve`, data)
-  },
-
-  rejectLeaveRequest(id, data = {}) {
-    return apiClient.post(`/hr/leave-requests/${id}/reject`, data)
-  },
-
-  cancelLeaveRequest(id) {
-    return apiClient.post(`/hr/leave-requests/${id}/cancel`)
-  },
-
-  // ==================== DEPARTMENTS ====================
-  
+  /**
+   * Get all departments
+   * @param {Object} params - { skip, limit }
+   */
   getDepartments(params = {}) {
-    return apiClient.get('/hr/departments', params)
+    return apiClient.get('/hr/departments', { params })
   },
 
-  getDepartment(id) {
-    return apiClient.get(`/hr/departments/${id}`)
+  /**
+   * Get single department by ID
+   * @param {string} departmentId - Department UUID
+   */
+  getDepartment(departmentId) {
+    return apiClient.get(`/hr/departments/${departmentId}`)
   },
 
+  /**
+   * Create new department
+   * @param {Object} data - { name, description }
+   */
   createDepartment(data) {
     return apiClient.post('/hr/departments', data)
   },
 
-  updateDepartment(id, data) {
-    return apiClient.put(`/hr/departments/${id}`, data)
+  /**
+   * Update department
+   * @param {string} departmentId - Department UUID
+   * @param {Object} data - { name, description }
+   */
+  updateDepartment(departmentId, data) {
+    return apiClient.put(`/hr/departments/${departmentId}`, data)
   },
 
-  deleteDepartment(id) {
-    return apiClient.delete(`/hr/departments/${id}`)
+  /**
+   * Delete department
+   * @param {string} departmentId - Department UUID
+   */
+  deleteDepartment(departmentId) {
+    return apiClient.delete(`/hr/departments/${departmentId}`)
   },
 
-  // ==================== POSITIONS ====================
-  
-  getPositions(params = {}) {
-    return apiClient.get('/hr/positions', params)
+  // ============ EMPLOYEES ============
+
+  /**
+   * Get all employees
+   * @param {Object} params - { skip, limit, department_id, employment_status }
+   */
+  getEmployees(params = {}) {
+    return apiClient.get('/hr/employees', { params })
   },
 
-  getPosition(id) {
-    return apiClient.get(`/hr/positions/${id}`)
+  /**
+   * Get single employee by ID
+   * @param {string} employeeId - Employee UUID
+   */
+  getEmployee(employeeId) {
+    return apiClient.get(`/hr/employees/${employeeId}`)
   },
 
-  createPosition(data) {
-    return apiClient.post('/hr/positions', data)
+  /**
+   * Create new employee
+   * @param {Object} data - Employee data
+   */
+  createEmployee(data) {
+    return apiClient.post('/hr/employees', data)
   },
 
-  updatePosition(id, data) {
-    return apiClient.put(`/hr/positions/${id}`, data)
+  /**
+   * Update employee
+   * @param {string} employeeId - Employee UUID
+   * @param {Object} data - Employee data
+   */
+  updateEmployee(employeeId, data) {
+    return apiClient.put(`/hr/employees/${employeeId}`, data)
   },
 
-  deletePosition(id) {
-    return apiClient.delete(`/hr/positions/${id}`)
+  /**
+   * Delete employee
+   * @param {string} employeeId - Employee UUID
+   */
+  deleteEmployee(employeeId) {
+    return apiClient.delete(`/hr/employees/${employeeId}`)
   },
 
-  // ==================== LEAVE TYPES ====================
-  
-  getLeaveTypes() {
-    return apiClient.get('/hr/leave-types')
+  // ============ ATTENDANCE ============
+
+  /**
+   * Create attendance record
+   * @param {Object} data - { employee_id, attendance_date, check_in_time, check_out_time, status, notes }
+   */
+  createAttendance(data) {
+    return apiClient.post('/hr/attendances', data)
   },
 
-  // ==================== STATISTICS ====================
-  
-  getStats(params = {}) {
-    return apiClient.get('/hr/stats', params)
+  /**
+   * Get today's attendance
+   * @param {string} attendanceDate - Date in YYYY-MM-DD format
+   */
+  getTodayAttendance(attendanceDate = null) {
+    const params = attendanceDate ? { attendance_date: attendanceDate } : {}
+    return apiClient.get('/hr/attendances/today', { params })
   },
 
-  getAttendanceStats(params = {}) {
-    return apiClient.get('/hr/stats/attendance', params)
+  /**
+   * Get employee attendance history
+   * @param {string} employeeId - Employee UUID
+   * @param {Object} params - { start_date, end_date }
+   */
+  getEmployeeAttendance(employeeId, params = {}) {
+    return apiClient.get(`/hr/employees/${employeeId}/attendances`, { params })
   },
 
-  getEmployeeStats(employeeId, params = {}) {
-    return apiClient.get(`/hr/employees/${employeeId}/stats`, params)
+  /**
+   * Update attendance record
+   * @param {string} attendanceId - Attendance UUID
+   * @param {Object} data - { check_in_time, check_out_time, status, notes }
+   */
+  updateAttendance(attendanceId, data) {
+    return apiClient.put(`/hr/attendances/${attendanceId}`, data)
   },
 
-  getDepartmentStats(departmentId, params = {}) {
-    return apiClient.get(`/hr/departments/${departmentId}/stats`, params)
+  /**
+   * Delete attendance record
+   * @param {string} attendanceId - Attendance UUID
+   */
+  deleteAttendance(attendanceId) {
+    return apiClient.delete(`/hr/attendances/${attendanceId}`)
   },
 
-  // ==================== REPORTS ====================
-  
-  generateReport(type, params = {}) {
-    return apiClient.get(`/hr/reports/${type}`, params)
+  // ============ SALARY PAYMENTS ============
+
+  /**
+   * Create salary payment
+   * @param {Object} data - Salary payment data
+   */
+  createSalaryPayment(data) {
+    return apiClient.post('/hr/salary-payments', data)
   },
 
-  exportEmployees(params = {}, format = 'xlsx') {
-    return apiClient.download('/hr/employees/export', `employees.${format}`, { ...params, format })
+  /**
+   * Get salary payment by ID
+   * @param {string} paymentId - Payment UUID
+   */
+  getSalaryPayment(paymentId) {
+    return apiClient.get(`/hr/salary-payments/${paymentId}`)
   },
 
-  exportAttendance(params = {}, format = 'xlsx') {
-    return apiClient.download('/hr/attendance/export', `attendance.${format}`, { ...params, format })
+  /**
+   * Get employee salary payments
+   * @param {string} employeeId - Employee UUID
+   * @param {Object} params - { skip, limit }
+   */
+  getEmployeeSalaryPayments(employeeId, params = {}) {
+    return apiClient.get(`/hr/employees/${employeeId}/salary-payments`, { params })
   },
 
-  exportPayroll(month, year, format = 'xlsx') {
-    return apiClient.download('/hr/payroll/export', `payroll-${month}-${year}.${format}`, { month, year, format })
+  // ============ LEAVE REQUESTS ============
+
+  /**
+   * Create leave request
+   * @param {Object} data - { employee_id, leave_type, start_date, end_date, reason }
+   */
+  createLeaveRequest(data) {
+    return apiClient.post('/hr/leave-requests', data)
+  },
+
+  /**
+   * Get all leave requests
+   * @param {Object} params - { skip, limit, status }
+   */
+  getLeaveRequests(params = {}) {
+    return apiClient.get('/hr/leave-requests', { params })
+  },
+
+  /**
+   * Get leave request by ID
+   * @param {string} requestId - Leave request UUID
+   */
+  getLeaveRequest(requestId) {
+    return apiClient.get(`/hr/leave-requests/${requestId}`)
+  },
+
+  /**
+   * Get employee leave requests
+   * @param {string} employeeId - Employee UUID
+   * @param {Object} params - { skip, limit }
+   */
+  getEmployeeLeaveRequests(employeeId, params = {}) {
+    return apiClient.get(`/hr/employees/${employeeId}/leave-requests`, { params })
+  },
+
+  /**
+   * Approve/Reject leave request
+   * @param {string} requestId - Leave request UUID
+   * @param {Object} data - { status: 'approved' | 'rejected' }
+   */
+  approveLeaveRequest(requestId, data) {
+    return apiClient.put(`/hr/leave-requests/${requestId}/approve`, data)
+  },
+
+  // ============ STATISTICS ============
+
+  /**
+   * Get HR statistics
+   */
+  getStatistics() {
+    return apiClient.get('/hr/statistics')
   }
 }
 

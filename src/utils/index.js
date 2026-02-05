@@ -7,6 +7,7 @@ export * from './formatters'
 export * from './validators'
 export * from './helpers'
 export * from './exportUtils'
+export * from './api'
 
 // Default export
 import constants from './constants'
